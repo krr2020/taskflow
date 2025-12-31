@@ -11,6 +11,8 @@ import { z } from "zod";
 import { StateMachine, ConfigLoader, GitManager } from "@krr2020/taskflow-core";
 import fs from "node:fs";
 import path from "node:path";
+import { generatePrdHandler } from "./handlers/generate-prd.js";
+import { generateTasksHandler } from "./handlers/generate-tasks.js";
 
 // Initialize Core Components
 const configLoader = new ConfigLoader();
@@ -82,22 +84,36 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "generate_prd",
-                description: "Generate a PRD template based on project context.",
+                description: "Generate a PRD. Use 'step' to toggle between gathering requirements (instructions), getting the template (instructions), or saving the file.",
                 inputSchema: {
                     type: "object",
                     properties: {
-                        requirements: { type: "string" }
+                        step: {
+                            type: "string",
+                            enum: ["requirements_gathering", "generated_template", "save"],
+                            description: "The phase of PRD generation."
+                        },
+                        featureName: { type: "string" },
+                        content: { type: "string" }
                     },
+                    required: ["step"],
                 },
             },
             {
                 name: "generate_tasks",
-                description: "Generate tasks from a PRD.",
+                description: "Generate tasks. Use 'step' to get planning rules/context (reads PRD) or save the generated JSON.",
                 inputSchema: {
                     type: "object",
                     properties: {
-                        prdContent: { type: "string" }
+                        step: {
+                            type: "string",
+                            enum: ["planning_rules", "save"],
+                            description: "The phase of task generation."
+                        },
+                        prdFileName: { type: "string" },
+                        tasksJSON: { type: "object" }
                     },
+                    required: ["step"],
                 },
             },
             {
@@ -204,102 +220,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
 
             case "generate_prd": {
-                const schema = z.object({
-                    requirements: z.string().optional(),
-                    content: z.string().optional(),
-                });
-                const { requirements, content } = schema.parse(args);
-
-                const finalContent = content || `# Project Requirements Document
-## 1. Objective
-${requirements || "[Describe the goal]"}
-
-## 2. Scope
-- [ ] In Scope
-- [ ] Out of Scope
-
-## 3. Technical Requirements
-- Language: [e.g., TypeScript]
-- Framework: [e.g., React]
-
-## 4. User Stories
-- Story 1: [Description]
-`;
-                const tasksDir = path.join(process.cwd(), "tasks");
-                if (!fs.existsSync(tasksDir)) {
-                    fs.mkdirSync(tasksDir, { recursive: true });
-                }
-
-                const prdPath = path.join(tasksDir, "PRD.md");
-                fs.writeFileSync(prdPath, finalContent);
-
-                return {
-                    content: [
-                        {
-                            type: "text",
-                            text: `PRD generated and saved to ${prdPath}\n\n${finalContent}`,
-                        },
-                    ],
-                };
+                return await generatePrdHandler(args);
             }
 
             case "generate_tasks": {
-                const schema = z.object({
-                    prdContent: z.string().optional(),
-                    tasks: z.array(z.any()).optional(), // Allow passing generated tasks directly
-                });
-                const { prdContent, tasks } = schema.parse(args);
-
-                if (tasks) {
-                    const tasksDir = path.join(process.cwd(), "tasks");
-                    if (!fs.existsSync(tasksDir)) {
-                        fs.mkdirSync(tasksDir, { recursive: true });
-                    }
-
-                    // Save all tasks to a single JSON file for reference
-                    const tasksJsonPath = path.join(tasksDir, "tasks.json");
-                    fs.writeFileSync(tasksJsonPath, JSON.stringify(tasks, null, 2));
-
-                    // Save individual task files
-                    const createdFiles: string[] = [];
-                    for (const task of tasks) {
-                         // Simple sanitization for filename
-                        const safeTitle = (task.title || "task").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-                        const filename = `${task.id}-${safeTitle}.md`;
-                        const taskPath = path.join(tasksDir, filename);
-                        
-                        const taskContent = `# Task ${task.id}: ${task.title}
-Status: ${task.status || "todo"}
-
-## Description
-${task.description || "No description provided."}
-
-## Subtasks
-${(task.subtasks || []).map((st: any) => `- [ ] ${st.title}`).join("\n")}
-`;
-                        fs.writeFileSync(taskPath, taskContent);
-                        createdFiles.push(filename);
-                    }
-
-                    return {
-                        content: [
-                            {
-                                type: "text",
-                                text: `Saved ${tasks.length} tasks to ${tasksDir}:\n- ${createdFiles.join("\n- ")}`,
-                            },
-                        ],
-                    };
-                }
-
-                // Fallback: Prompt for tasks if not provided
-                return {
-                    content: [
-                        {
-                            type: "text",
-                            text: "Please provide the tasks in the 'tasks' argument to save them. Format matches TaskSchema.",
-                        },
-                    ],
-                };
+                return await generateTasksHandler(args);
             }
 
             case "run_checks": {
