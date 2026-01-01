@@ -34,6 +34,12 @@
 				"provider": "ollama",
 				"model": "llama2",
 				"baseUrl": "http://localhost:11434"
+			},
+			"glm-4.7": {
+				"provider": "openai-compatible",
+				"model": "glm-4.7",
+				"apiKey": "${GLM_API_KEY}",
+				"baseUrl": "https://your-glm-endpoint.com/v1"
 			}
 		},
 		"usage": {

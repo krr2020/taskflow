@@ -155,7 +155,7 @@ export class UpgradeCommand extends BaseCommand {
 				continue;
 			}
 
-			if (file.strategy === "SUGGEST" || options?.force) {
+			if (file.strategy === "SUGGEST") {
 				this.updateFile(file);
 				output += `${colors.success(`  ${icons.success} Updated ${file.name}`)}\n`;
 				updatedCount++;
