@@ -44,6 +44,28 @@ export class InitCommand extends BaseCommand {
 			detectedProjectName ||
 			path.basename(this.context.projectRoot);
 
+		// Add task script to package.json if it exists
+		if (fs.existsSync(packageJsonPath)) {
+			try {
+				const packageJson = JSON.parse(
+					fs.readFileSync(packageJsonPath, "utf-8"),
+				);
+				if (!packageJson.scripts) {
+					packageJson.scripts = {};
+				}
+				if (!packageJson.scripts.task) {
+					packageJson.scripts.task = "taskflow";
+					fs.writeFileSync(
+						packageJsonPath,
+						`${JSON.stringify(packageJson, null, 2)}\n`,
+						"utf-8",
+					);
+				}
+			} catch (_error) {
+				// If package.json is invalid or cannot be updated, continue
+			}
+		}
+
 		// Create default configuration
 		const config = ConfigLoader.createDefaultConfig(finalProjectName);
 		configLoader.save(config);
@@ -152,22 +174,55 @@ export class InitCommand extends BaseCommand {
 				"✓ Created tasks/ directory",
 				"✓ Created .taskflow/ref/ directory",
 				"✓ Created .taskflow/logs/ directory",
+				fs.existsSync(packageJsonPath)
+					? "✓ Added 'task' script to package.json"
+					: "",
 				`✓ Copied ${copiedFiles} template files`,
-			].join("\n"),
+			]
+				.filter(Boolean)
+				.join("\n"),
 			[
 				"1. Create a PRD (Product Requirements Document):",
 				"   Run: taskflow prd create <feature-name>",
+				"   or:  pnpm task prd create <feature-name>",
 				"",
 				"2. Generate tasks from PRD:",
 				"   Run: taskflow tasks generate <prd-file>",
+				"   or:  pnpm task tasks generate <prd-file>",
 				"",
 				"3. Start working on tasks:",
 				"   Run: taskflow next  (to find the next task)",
 				"   Run: taskflow start <task-id>",
+				"   or:  pnpm task next",
+				"   or:  pnpm task start <task-id>",
 			].join("\n"),
 			{
 				aiGuidance: [
 					"You have initialized TaskFlow in this project.",
+					"",
+					"COMMAND USAGE:",
+					"──────────────",
+					"You can run taskflow commands in two ways:",
+					"",
+					"1. Direct command:",
+					"   taskflow <command> <args>",
+					"",
+					"2. Via npm script (if package.json has 'task' script):",
+					"   pnpm task <command> <args>",
+					"   npm run task -- <command> <args>",
+					"",
+					"AI CONFIGURATION:",
+					"─────────────────",
+					"Some commands require AI for content generation:",
+					"  - taskflow prd generate-arch: Generates coding-standards.md and architecture-rules.md",
+					"  - taskflow tasks generate: Generates task breakdown from PRD",
+					"",
+					"If running via MCP/Factory AI:",
+					"  → AI agent will automatically handle generation",
+					"",
+					"If running manually (CLI):",
+					"  → You MUST configure an AI provider first:",
+					"    taskflow configure ai --provider <provider> --apiKey <key> --model <model>",
 					"",
 					"NEXT: Create a PRD",
 					"────────────────────",
@@ -190,6 +245,7 @@ export class InitCommand extends BaseCommand {
 					"NEVER edit files in .taskflow/ or tasks/ directories directly",
 					"ALWAYS use taskflow commands for task management",
 					"Read ai-protocol.md before starting any task",
+					"If running CLI manually, configure AI before using generate commands",
 				],
 			},
 		);

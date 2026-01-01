@@ -155,7 +155,7 @@ export class ModelSelector {
 		if (config.usage && typeof config.usage === "object") {
 			const usage = config.usage as Record<string, string>;
 			const modelKey = usage[phase] || usage.default;
-			const definition = models[modelKey] || models[usage.default];
+			const definition = modelKey ? models[modelKey] : null;
 			if (definition && typeof definition === "object") {
 				return definition as ModelDefinition;
 			}

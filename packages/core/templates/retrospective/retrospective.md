@@ -7,5 +7,3 @@
 
 | ID | Category | Error Pattern (Regex/Keywords) | Solution / Fix | Count | Criticality |
 |---|---|---|---|---|---|
-| 1 | Formatting | File content differs from formatting output | Run pnpm format | 2 | Medium |
-| 2 | Type Error | z\.coerce\.number.*\.default\(|z\.boolean\(\)\.default\(|z\.enum.*\.default\( | In Zod v3, .default() affects type inference. For react-hook-form with zodResolver, remove .default() from Zod schema and provide default values in useForm's defaultValues option instead. | 1 | High |
