@@ -1,0 +1,21 @@
+{
+  "project": {
+    "name": "e2e-test-project",
+    "root": "."
+  },
+  "branching": {
+    "strategy": "per-story",
+    "base": "main",
+    "prefix": "story/"
+  },
+  "ai": {
+    "enabled": true,
+    "provider": "mock",
+    "models": {
+      "default": {
+        "provider": "mock",
+        "model": "mock-model"
+      }
+    }
+  }
+}

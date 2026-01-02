@@ -1,0 +1,20 @@
+{
+  "id": "1.1.0",
+  "title": "Test Task",
+  "description": "A test task",
+  "status": "committing",
+  "skill": "backend",
+  "subtasks": [
+    {
+      "id": "1",
+      "description": "Subtask 1",
+      "status": "pending"
+    }
+  ],
+  "context": [
+    "test.ts"
+  ],
+  "acceptanceCriteria": [
+    "Works"
+  ]
+}
