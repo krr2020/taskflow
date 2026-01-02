@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { BaseCommand, type CommandResult } from "../../src/commands/base";
+import type { MCPContext } from "../../src/lib/mcp-detector";
 
 // Concrete implementation for testing
 class TestCommand extends BaseCommand {
@@ -18,7 +19,11 @@ class TestCommand extends BaseCommand {
 }
 
 describe("BaseCommand", () => {
-	const mockContext = { projectRoot: "/tmp/test" };
+	const mockMCPContext: MCPContext = {
+		isMCP: false,
+		detectionMethod: "none",
+	};
+	const mockContext = { projectRoot: "/tmp/test", mcpContext: mockMCPContext };
 
 	it("should execute operation successfully", async () => {
 		const command = new TestCommand(mockContext);

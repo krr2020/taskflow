@@ -29,6 +29,7 @@ import { StartCommand } from "../commands/workflow/start.js";
 import { StatusCommand } from "../commands/workflow/status.js";
 // Import errors
 import { formatError, TaskflowError } from "../lib/errors.js";
+import { MCPDetector } from "../lib/mcp-detector.js";
 import {
 	consoleOutput,
 	formatFailure,
@@ -44,9 +45,13 @@ export async function runCLI() {
 		.description("AI-first task management and workflow system")
 		.version("1.0.0");
 
+	// Detect MCP context
+	const mcpContext = MCPDetector.detect();
+
 	// Create command context
 	const context: CommandContext = {
 		projectRoot: process.cwd(),
+		mcpContext,
 	};
 
 	// ========================================
@@ -317,23 +322,32 @@ export async function runCLI() {
 	prdCommand
 		.command("create")
 		.description("Create a new PRD (supports AI generation)")
-		.argument("<feature-name>", "Name of the feature")
+		.argument(
+			"[feature-name]",
+			"Name of the feature (optional with --interactive)",
+		)
 		.option(
 			"--description <desc>",
 			"Feature description/requirements (optional)",
 		)
 		.option("--title <title>", "PRD title (optional, overrides feature name)")
+		.option("-i, --interactive", "Interactive mode - prompts for PRD details")
 		.action(
 			async (
-				featureName: string,
-				options: { description?: string; title?: string },
+				featureName: string | undefined,
+				options: {
+					description?: string;
+					title?: string;
+					interactive?: boolean;
+				},
 			) => {
 				try {
 					const cmd = new PrdCreateCommand(context);
 					const result = await cmd.execute(
-						featureName,
+						featureName || "",
 						options.description,
 						options.title,
+						options.interactive,
 					);
 					console.log(formatSuccess(result));
 					process.exit(0);

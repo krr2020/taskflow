@@ -13,6 +13,7 @@ import {
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ConfigureAICommand } from "../../src/commands/configure.js";
+import type { MCPContext } from "../../src/lib/mcp-detector";
 
 describe("ConfigureAICommand", () => {
 	const testProjectRoot = join(process.cwd(), "test-project-config");
@@ -37,7 +38,14 @@ describe("ConfigureAICommand", () => {
 		};
 		writeFileSync(configPath, JSON.stringify(initialConfig, null, 2));
 
-		command = new ConfigureAICommand({ projectRoot: testProjectRoot });
+		const mockMCPContext: MCPContext = {
+			isMCP: false,
+			detectionMethod: "none",
+		};
+		command = new ConfigureAICommand({
+			projectRoot: testProjectRoot,
+			mcpContext: mockMCPContext,
+		});
 	});
 
 	afterEach(() => {

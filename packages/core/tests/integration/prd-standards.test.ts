@@ -4,12 +4,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../../src/commands/base.js";
 import { InitCommand } from "../../src/commands/init.js";
 import { PrdGenerateArchCommand } from "../../src/commands/prd/generate-arch.js";
 import { PrdUpdateArchCommand } from "../../src/commands/prd/update-arch.js";
 import { PrdUpdateStandardsCommand } from "../../src/commands/prd/update-standards.js";
+import type { MCPContext } from "../../src/lib/mcp-detector";
 import { createTestDir } from "../setup.js";
 
 describe("PRD Standards Integration", () => {
@@ -18,7 +19,16 @@ describe("PRD Standards Integration", () => {
 
 	beforeEach(() => {
 		testDir = createTestDir();
-		context = { projectRoot: testDir };
+		const mockMCPContext: MCPContext = {
+			isMCP: true,
+			detectionMethod: "test",
+			serverName: "test-mcp",
+		};
+		context = { projectRoot: testDir, mcpContext: mockMCPContext };
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
 	});
 
 	describe("Generate Architecture Standards", () => {
@@ -77,6 +87,11 @@ describe("PRD Standards Integration", () => {
 			const initCmd = new InitCommand(context);
 			await initCmd.execute("test-project");
 
+			// Delete template files created by init
+			const refDir = path.join(testDir, ".taskflow", "ref");
+			fs.unlinkSync(path.join(refDir, "coding-standards.md"));
+			fs.unlinkSync(path.join(refDir, "architecture-rules.md"));
+
 			// Create a PRD file
 			const prdsDir = path.join(testDir, "tasks", "prds");
 			fs.mkdirSync(prdsDir, { recursive: true });
@@ -88,6 +103,7 @@ describe("PRD Standards Integration", () => {
 
 			// Generate standards (should fall back to guidance)
 			const cmd = new PrdGenerateArchCommand(context);
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
 			const result = await cmd.execute("test-prd.md");
 
 			expect(result.success).toBe(true);
@@ -109,6 +125,11 @@ describe("PRD Standards Integration", () => {
 			const initCmd = new InitCommand(context);
 			await initCmd.execute("test-project");
 
+			// Delete template files created by init
+			const refDir = path.join(testDir, ".taskflow", "ref");
+			fs.unlinkSync(path.join(refDir, "coding-standards.md"));
+			fs.unlinkSync(path.join(refDir, "architecture-rules.md"));
+
 			// Create a PRD file
 			const prdsDir = path.join(testDir, "tasks", "prds");
 			fs.mkdirSync(prdsDir, { recursive: true });
@@ -117,6 +138,7 @@ describe("PRD Standards Integration", () => {
 
 			// Generate with instructions
 			const cmd = new PrdGenerateArchCommand(context);
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
 			const result = await cmd.execute(
 				"test-prd.md",
 				"Focus on API design patterns",
@@ -145,6 +167,11 @@ describe("PRD Standards Integration", () => {
 			// Initialize project first
 			const initCmd = new InitCommand(context);
 			await initCmd.execute("test-project");
+
+			// Delete the coding-standards.md file created by init
+			const refDir = path.join(testDir, ".taskflow", "ref");
+			const codingStandardsPath = path.join(refDir, "coding-standards.md");
+			fs.unlinkSync(codingStandardsPath);
 
 			// Try to update non-existent standards
 			const cmd = new PrdUpdateStandardsCommand(context);
@@ -217,6 +244,11 @@ describe("PRD Standards Integration", () => {
 			// Initialize project first
 			const initCmd = new InitCommand(context);
 			await initCmd.execute("test-project");
+
+			// Delete architecture-rules.md file created by init
+			const refDir = path.join(testDir, ".taskflow", "ref");
+			const architectureRulesPath = path.join(refDir, "architecture-rules.md");
+			fs.unlinkSync(architectureRulesPath);
 
 			// Try to update non-existent rules
 			const cmd = new PrdUpdateArchCommand(context);
@@ -294,14 +326,19 @@ describe("PRD Standards Integration", () => {
 				"# Test PRD\n\n## Requirements\n\n- Feature A\n- Feature B\n\n## Tech Stack\n\n- TypeScript\n- Node.js",
 			);
 
+			// Delete template files created by init so generation doesn't fail
+			const refDir = path.join(testDir, ".taskflow", "ref");
+			fs.unlinkSync(path.join(refDir, "coding-standards.md"));
+			fs.unlinkSync(path.join(refDir, "architecture-rules.md"));
+
 			// 3. Generate standards (should provide guidance)
 			const generateCmd = new PrdGenerateArchCommand(context);
+			vi.spyOn(generateCmd as any, "isLLMAvailable").mockReturnValue(false);
 			const generateResult = await generateCmd.execute("test-prd.md");
 			expect(generateResult.success).toBe(true);
 			expect(generateResult.aiGuidance).toBeDefined();
 
 			// 4. Manually create standards files (simulating AI completion)
-			const refDir = path.join(testDir, ".taskflow", "ref");
 			const codingStandardsPath = path.join(refDir, "coding-standards.md");
 			const architectureRulesPath = path.join(refDir, "architecture-rules.md");
 

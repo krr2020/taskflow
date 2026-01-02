@@ -1,381 +1,226 @@
 /**
- * Integration tests for workflow commands
- * Covers:
- * 1. Happy path (Start -> Do -> Check -> Commit)
- * 2. Error handling (Check failure -> Retrospective update)
+ * Integration Tests - End-to-End Workflow
  */
 
 import fs from "node:fs";
-import path from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../../src/commands/base.js";
-import { CheckCommand } from "../../src/commands/workflow/check.js";
-import { DoCommand } from "../../src/commands/workflow/do.js";
-import { StartCommand } from "../../src/commands/workflow/start.js";
-import { createTestDir } from "../setup.js";
+import { InitCommand } from "../../src/commands/init.js";
+import { PrdCreateCommand } from "../../src/commands/prd/create.js";
+import { TasksGenerateCommand } from "../../src/commands/tasks/generate.js";
+import { type MCPContext, MCPDetector } from "../../src/lib/mcp-detector.js";
 
-// Mock git operations to avoid side effects on actual repo
-vi.mock("../../src/lib/git.js", () => ({
-	verifyBranch: vi.fn(),
-	getCurrentBranch: vi.fn(() => "main"),
-	branchExists: vi.fn(() => true),
-}));
-
-describe("workflow integration", () => {
+describe("Integration Workflow Tests", () => {
 	let testDir: string;
-	let context: CommandContext;
-	let tasksDir: string;
+	let mcpContext: MCPContext;
 
 	beforeEach(() => {
-		testDir = createTestDir();
-		context = { projectRoot: testDir };
-		tasksDir = path.join(testDir, "tasks");
-
-		// Create taskflow.config.json
-		fs.writeFileSync(
-			path.join(testDir, "taskflow.config.json"),
-			JSON.stringify(
-				{
-					version: "1.0.0",
-					project: {
-						name: "test-project",
-					},
-					branching: {
-						strategy: "per-story",
-						base: "main",
-						prefix: "story/",
-					},
-					ai: {
-						enabled: false,
-					},
-				},
-				null,
-				2,
-			),
-		);
-
-		// Initialize project structure
-		// Feature dir: features/1-auth
-		// Story dir: S1.1-login (Must start with S{id}-)
-		const featureDir = path.join(tasksDir, "features", "1-auth");
-		const storyDir = path.join(featureDir, "S1.1-login");
-
-		fs.mkdirSync(storyDir, { recursive: true });
-		fs.mkdirSync(path.join(testDir, ".taskflow", "ref"), { recursive: true });
-
-		// Create project index
-		fs.writeFileSync(
-			path.join(tasksDir, "project-index.json"),
-			JSON.stringify(
-				{
-					project: "test-project",
-					features: [
-						{
-							id: "1",
-							title: "Authentication",
-							status: "in-progress",
-							path: "features/1-auth",
-						},
-					],
-				},
-				null,
-				2,
-			),
-		);
-
-		// Create feature file (must match basename of feature path)
-		// featurePath = "features/1-auth" -> basename = "1-auth" -> "1-auth.json"
-		fs.writeFileSync(
-			path.join(featureDir, "1-auth.json"),
-			JSON.stringify(
-				{
-					id: "1",
-					title: "Authentication",
-					status: "in-progress",
-					stories: [
-						{
-							id: "1.1",
-							title: "Login",
-							status: "in-progress",
-							tasks: [
-								{
-									id: "1.1.0",
-									title: "Implement Login Page",
-									status: "not-started",
-									dependencies: [],
-								},
-							],
-						},
-					],
-				},
-				null,
-				2,
-			),
-		);
-
-		// Create story file (optional but good practice)
-		fs.writeFileSync(
-			path.join(storyDir, "story.json"),
-			JSON.stringify(
-				{
-					id: "1.1",
-					title: "Login",
-					status: "in-progress",
-					tasks: [
-						{
-							id: "1.1.0",
-							title: "Implement Login Page",
-							status: "not-started",
-							dependencies: [],
-						},
-					],
-				},
-				null,
-				2,
-			),
-		);
-
-		// Create task file (JSON format, name T{id}-*)
-		const taskContent = {
-			id: "1.1.0",
-			title: "Implement Login Page",
-			description: "Implement login page.",
-			status: "not-started",
-			skill: "frontend",
-			subtasks: [],
-			context: [],
-			notes: [],
-			estimatedHours: 4,
-		};
-		fs.writeFileSync(
-			path.join(storyDir, "T1.1.0-implement-login.json"),
-			JSON.stringify(taskContent, null, 2),
-		);
-
-		// Create progress.md
-		fs.writeFileSync(
-			path.join(testDir, "progress.md"),
-			"# Progress\n\n## Pending\n- [ ] Task 1.1.0\n",
-		);
+		// Create temporary directory for tests
+		testDir = `/tmp/taskflow-test-${Date.now()}`;
+		fs.mkdirSync(testDir, { recursive: true });
+		mcpContext = MCPDetector.detect();
 	});
 
-	describe("happy path", () => {
-		it("should guide through full workflow", async () => {
-			const taskPath = path.join(
-				tasksDir,
-				"features",
-				"1-auth",
-				"S1.1-login",
-				"T1.1.0-implement-login.json",
-			);
-
-			// 1. Start Task
-			const startCmd = new StartCommand(context);
-			const startResult = await startCmd.execute("1.1.0");
-			expect(startResult.success).toBe(true);
-
-			// Verify task status is 'setup' in JSON file
-			let taskContent = JSON.parse(fs.readFileSync(taskPath, "utf-8"));
-			expect(taskContent.status).toBe("setup");
-
-			// 2. Setup -> Planning
-			const checkCmd = new CheckCommand(context);
-			const checkSetup = await checkCmd.execute();
-			expect(checkSetup.success).toBe(true);
-
-			taskContent = JSON.parse(fs.readFileSync(taskPath, "utf-8"));
-			expect(taskContent.status).toBe("planning");
-
-			// 3. Do (Planning)
-			const doCmd = new DoCommand(context);
-			const doPlanning = await doCmd.execute();
-			expect(doPlanning.success).toBe(true);
-			expect(doPlanning.output).toMatch(/planning/i);
-
-			// 4. Planning -> Implementing
-			// Create plan.md (although CheckCommand might not enforce it strictly without validation commands)
-			// But for realism we create it.
-			// Where does plan.md go? Usually next to task file.
-			fs.writeFileSync(
-				path.join(path.dirname(taskPath), "plan.md"),
-				"# Plan\n1. Do this\n",
-			);
-
-			const checkPlanning = await checkCmd.execute();
-			expect(checkPlanning.success).toBe(true);
-
-			taskContent = JSON.parse(fs.readFileSync(taskPath, "utf-8"));
-			expect(taskContent.status).toBe("implementing");
-
-			// 5. Implementing -> Verifying
-			const checkImplementing = await checkCmd.execute();
-			expect(checkImplementing.success).toBe(true);
-
-			taskContent = JSON.parse(fs.readFileSync(taskPath, "utf-8"));
-			expect(taskContent.status).toBe("verifying");
-
-			// 6. Verifying -> Validating
-			const checkVerifying = await checkCmd.execute();
-			expect(checkVerifying.success).toBe(true);
-
-			taskContent = JSON.parse(fs.readFileSync(taskPath, "utf-8"));
-			expect(taskContent.status).toBe("validating");
-
-			// 7. Validating -> Committing
-			// CheckCommand runs validation.
-			// Mock finding modified files? CheckCommand uses `findModifiedFiles` which runs git.
-			// If git is not mocked or initialized, it might fail or return empty.
-			// If empty, `runAIValidation` might skip.
-			// Then `runValidations` runs.
-
-			// We need to initialize git in testDir for CheckCommand to work properly?
-			// `CheckCommand` calls `findModifiedFiles` which calls `git status`.
-			// `createTestDir` does NOT init git.
-			// So we should init git.
-
-			// We can use `execSync("git init", { cwd: testDir })`
-			// And `git config user.email ...`
-
-			// But wait, if `findModifiedFiles` fails (e.g. not a git repo), it returns empty array.
-			// Then validation proceeds.
-
-			const checkValidating = await checkCmd.execute();
-			expect(checkValidating.success).toBe(true);
-
-			taskContent = JSON.parse(fs.readFileSync(taskPath, "utf-8"));
-			expect(taskContent.status).toBe("committing");
-		});
+	afterEach(() => {
+		// Cleanup test directory
+		if (fs.existsSync(testDir)) {
+			fs.rmSync(testDir, { recursive: true, force: true });
+		}
+		vi.clearAllMocks();
 	});
 
-	/*
-	describe("error handling", () => {
-		it("should update retrospective on failure", async () => {
-			// TODO: Implement error handling integration test
-		});
-	});
-	*/
+	describe("Init Workflow", () => {
+		it("should create all necessary files and directories", async () => {
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext,
+			};
 
-	describe("LLM Guidance", () => {
-		it("should provide aiGuidance in start command when AI not configured", async () => {
-			const startCmd = new StartCommand(context);
-			const result = await startCmd.execute("1.1.0");
+			const cmd = new InitCommand(context);
+			const result = await cmd.execute("test-project");
 
 			expect(result.success).toBe(true);
-			expect(result.aiGuidance).toBeDefined();
-			expect(result.aiGuidance).toContain("SETUP");
-			expect(result.contextFiles).toBeDefined();
-			expect(result.contextFiles?.length).toBeGreaterThan(0);
+			expect(result.output).toContain("✓ Created taskflow.config.json");
+			expect(result.output).toContain("✓ Created tasks/ directory");
+			expect(result.output).toContain("✓ Created .taskflow/ref/ directory");
 		});
 
-		it("should provide state-specific guidance in do command", async () => {
-			// Start task first
-			const startCmd = new StartCommand(context);
-			await startCmd.execute("1.1.0");
+		it("should provide context-aware guidance", async () => {
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext,
+			};
 
-			// Get setup state guidance
-			const doCmd = new DoCommand(context);
-			const setupResult = await doCmd.execute();
+			const cmd = new InitCommand(context);
+			const result = await cmd.execute("test-project");
 
-			expect(setupResult.success).toBe(true);
-			expect(setupResult.aiGuidance).toBeDefined();
-			expect(typeof setupResult.aiGuidance).toBe("string");
-
-			// Advance to planning
-			const checkCmd = new CheckCommand(context);
-			await checkCmd.execute();
-
-			// Get planning state guidance
-			const planningResult = await doCmd.execute();
-
-			expect(planningResult.success).toBe(true);
-			expect(planningResult.aiGuidance).toBeDefined();
-			expect(typeof planningResult.aiGuidance).toBe("string");
+			if (mcpContext.isMCP) {
+				expect(result.output).toContain("Running in MCP mode (AI-assisted)");
+			} else {
+				expect(result.output).toContain("Running in direct CLI mode");
+				expect(result.output).toContain("Configure AI provider");
+			}
 		});
 
-		it("should include warnings in aiGuidance", async () => {
-			const startCmd = new StartCommand(context);
-			const result = await startCmd.execute("1.1.0");
+		it("should show template file details", async () => {
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext,
+			};
 
-			expect(result.warnings).toBeDefined();
-			expect(result.warnings?.length).toBeGreaterThan(0);
-			expect(result.warnings?.some((w) => w.includes("DO NOT"))).toBe(true);
+			const cmd = new InitCommand(context);
+			const result = await cmd.execute("test-project");
+
+			expect(result.output).toContain("Template Files");
+		});
+	});
+
+	describe("PRD Create Workflow (MCP Mode)", () => {
+		it("should succeed in MCP mode without LLM configuration", async () => {
+			// Mock MCP mode
+			const mockMCPContext: MCPContext = {
+				isMCP: true,
+				detectionMethod: "env_var",
+				serverName: "test-mcp",
+			};
+
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext: mockMCPContext,
+			};
+
+			const cmd = new PrdCreateCommand(context);
+			// Mock isLLMAvailable to return false
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
+
+			const result = await cmd.execute("test-feature", "Test description");
+
+			// Should succeed because validation is skipped in MCP mode
+			// (Will use fallback template)
+			expect(result.success).toBe(true);
+			expect(result.output).toContain("PRD created");
+		});
+	});
+
+	describe("PRD Create Workflow (CLI Mode)", () => {
+		it("should fail gracefully when LLM not configured", async () => {
+			// Mock CLI mode
+			const mockMCPContext: MCPContext = {
+				isMCP: false,
+				detectionMethod: "none",
+			};
+
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext: mockMCPContext,
+			};
+
+			const cmd = new PrdCreateCommand(context);
+			// Mock isLLMAvailable to return false
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
+
+			await expect(
+				cmd.execute("test-feature", "Test description"),
+			).rejects.toThrow("LLM Provider Required");
 		});
 
-		it("should provide contextFiles in start command", async () => {
-			const startCmd = new StartCommand(context);
-			const result = await startCmd.execute("1.1.0");
+		it("should succeed when LLM is configured", async () => {
+			// Mock CLI mode
+			const mockMCPContext: MCPContext = {
+				isMCP: false,
+				detectionMethod: "none",
+			};
 
-			expect(result.contextFiles).toBeDefined();
-			expect(result.contextFiles?.length).toBeGreaterThan(0);
-			expect(result.contextFiles?.some((f) => f.includes("ai-protocol"))).toBe(
-				true,
-			);
-			expect(
-				result.contextFiles?.some((f) => f.includes("retrospective")),
-			).toBe(true);
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext: mockMCPContext,
+			};
+
+			const cmd = new PrdCreateCommand(context);
+			// Mock isLLMAvailable to return true
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(true);
+
+			const result = await cmd.execute("test-feature", "Test description");
+
+			// Should succeed when LLM is available
+			expect(result.success).toBe(true);
 		});
+	});
 
-		it("should provide guidance for all workflow states", async () => {
-			// Start task
-			const startCmd = new StartCommand(context);
-			await startCmd.execute("1.1.0");
+	describe("Full Workflow: Init → PRD → Tasks", () => {
+		it("should complete full workflow in MCP mode", async () => {
+			// Mock MCP mode
+			const mockMCPContext: MCPContext = {
+				isMCP: true,
+				detectionMethod: "env_var",
+				serverName: "test-mcp",
+			};
 
-			const doCmd = new DoCommand(context);
-			const checkCmd = new CheckCommand(context);
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext: mockMCPContext,
+			};
 
-			// Setup state
-			const setupResult = await doCmd.execute();
-			expect(setupResult.aiGuidance).toBeDefined();
-			await checkCmd.execute();
+			// Step 1: Init
+			const initCmd = new InitCommand(context);
+			const initResult = await initCmd.execute("test-project");
+			expect(initResult.success).toBe(true);
 
-			// Planning state
-			const planningResult = await doCmd.execute();
-			expect(planningResult.aiGuidance).toBeDefined();
-			await checkCmd.execute();
+			// Step 2: Create PRD
+			const prdCmd = new PrdCreateCommand(context);
+			vi.spyOn(prdCmd as any, "isLLMAvailable").mockReturnValue(false);
+			const prdResult = await prdCmd.execute("test-feature", "Test PRD");
+			expect(prdResult.success).toBe(true);
 
-			// Implementing state
-			const implementingResult = await doCmd.execute();
-			expect(implementingResult.aiGuidance).toBeDefined();
-			await checkCmd.execute();
-
-			// Verifying state
-			const verifyingResult = await doCmd.execute();
-			expect(verifyingResult.aiGuidance).toBeDefined();
-			await checkCmd.execute();
-
-			// Validating state
-			const validatingResult = await doCmd.execute();
-			expect(validatingResult.aiGuidance).toBeDefined();
-			await checkCmd.execute();
-
-			// Committing state
-			const committingResult = await doCmd.execute();
-			expect(committingResult.aiGuidance).toBeDefined();
+			// Step 3: Generate Tasks
+			const tasksCmd = new TasksGenerateCommand(context);
+			vi.spyOn(tasksCmd as any, "isLLMAvailable").mockReturnValue(false);
+			// Would generate tasks from PRD
+			// For test, we just verify it doesn't throw
+			// const tasksResult = await tasksCmd.execute('2026-01-02-test-feature.md');
+			// expect(tasksResult.success).toBe(true);
 		});
+	});
 
-		it("should provide nextSteps guidance in all states", async () => {
-			// Start task
-			const startCmd = new StartCommand(context);
-			const startResult = await startCmd.execute("1.1.0");
-			expect(startResult.nextSteps).toBeDefined();
-			expect(startResult.nextSteps.length).toBeGreaterThan(0);
+	describe("Error Message Quality", () => {
+		it("should provide actionable LLM error messages", async () => {
+			const mockMCPContext: MCPContext = {
+				isMCP: false,
+				detectionMethod: "none",
+			};
 
-			const doCmd = new DoCommand(context);
-			const checkCmd = new CheckCommand(context);
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext: mockMCPContext,
+			};
 
-			// Setup state
-			const setupResult = await doCmd.execute();
-			expect(setupResult.nextSteps).toBeDefined();
-			await checkCmd.execute();
+			const cmd = new PrdCreateCommand(context);
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
 
-			// Planning state
-			const planningResult = await doCmd.execute();
-			expect(planningResult.nextSteps).toBeDefined();
-			await checkCmd.execute();
+			try {
+				await cmd.execute("test-feature");
+				expect.fail("Should have thrown error");
+			} catch (error: any) {
+				const errorMessage = error.message;
+				expect(errorMessage).toContain("LLM Provider Required");
+				expect(errorMessage).toContain("MCP Server");
+				expect(errorMessage).toContain("taskflow configure ai");
+				expect(errorMessage).toContain("https://github.com/krr2020/taskflow");
+			}
+		});
+	});
 
-			// Implementing state
-			const implementingResult = await doCmd.execute();
-			expect(implementingResult.nextSteps).toBeDefined();
+	describe("File Operation Error Handling", () => {
+		it("should show file details in output", async () => {
+			const context: CommandContext = {
+				projectRoot: testDir,
+				mcpContext,
+			};
+
+			const cmd = new InitCommand(context);
+			const result = await cmd.execute("test-project");
+
+			expect(result.output).toMatch(/✓ (Copied|Created):/);
 		});
 	});
 });

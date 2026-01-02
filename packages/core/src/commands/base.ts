@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ConfigLoader } from "../lib/config-loader.js";
+import type { MCPContext } from "../lib/mcp-detector.js";
 import type { LLMProvider } from "../llm/base.js";
 import { Phase } from "../llm/base.js";
 import { LLMCache } from "../llm/cache.js";
@@ -17,6 +18,7 @@ import { RateLimiter } from "../llm/rate-limiter.js";
 
 export interface CommandContext {
 	projectRoot: string;
+	mcpContext: MCPContext;
 }
 
 export interface CommandResult {
@@ -37,8 +39,13 @@ export abstract class BaseCommand {
 	protected llmCache: LLMCache;
 	protected rateLimiter: RateLimiter;
 	protected checkpointManager: CheckpointManager;
+	protected mcpContext: MCPContext;
+
+	// Commands that require LLM (set in subclasses)
+	protected requiresLLM: boolean = false;
 
 	constructor(protected context: CommandContext) {
+		this.mcpContext = context.mcpContext;
 		this.configLoader = new ConfigLoader(context.projectRoot);
 		this.costTracker = new CostTracker();
 		this.llmCache = new LLMCache();
@@ -84,6 +91,69 @@ export abstract class BaseCommand {
 	 */
 	protected isLLMAvailable(): boolean {
 		return this.llmProvider?.isConfigured() === true;
+	}
+
+	/**
+	 * Validate LLM availability before execution
+	 * Throws an error if LLM is required but not available
+	 */
+	protected validateLLM(commandName?: string): void {
+		if (!this.requiresLLM) {
+			return;
+		}
+
+		// Skip validation if running in MCP mode (AI will handle it)
+		if (this.mcpContext.isMCP) {
+			return;
+		}
+
+		// Check if LLM is available
+		if (!this.isLLMAvailable()) {
+			const cmdName =
+				commandName ||
+				this.constructor.name.replace("Command", "").toLowerCase();
+			throw new Error(this.getLLMRequiredErrorMessage(cmdName));
+		}
+	}
+
+	/**
+	 * Get user-friendly error message for LLM requirement
+	 */
+	private getLLMRequiredErrorMessage(commandName: string): string {
+		return `
+❌ LLM Provider Required
+
+The '${commandName}' command requires an AI/LLM provider to function.
+
+You have two options:
+
+Option 1: Use via MCP Server (Recommended)
+────────────────────────────────────────────
+Use TaskFlow from Claude Desktop with the MCP server:
+  npm install -g @krr2020/taskflow-mcp-server
+
+Configure in Claude Desktop settings and interact via chat.
+
+Option 2: Configure Custom LLM Provider
+────────────────────────────────────────
+Set up a custom LLM provider in taskflow.config.json:
+  {
+    "ai": {
+      "enabled": true,
+      "provider": "anthropic",
+      "apiKey": "your-api-key",
+      "model": "claude-sonnet-4"
+    }
+  }
+
+Or set environment variable:
+  export ANTHROPIC_API_KEY=your-key
+
+Then configure:
+  taskflow configure ai --provider anthropic --model claude-sonnet-4
+
+For more info: https://github.com/krr2020/taskflow
+`.trim();
 	}
 
 	/**

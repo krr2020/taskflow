@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../../src/commands/base.js";
 import { CheckCommand } from "../../src/commands/workflow/check.js";
 import { StartCommand } from "../../src/commands/workflow/start.js";
+import type { MCPContext } from "../../src/lib/mcp-detector";
 import { createTestDir } from "../setup.js";
 
 // Mock git operations
@@ -26,7 +27,11 @@ describe("check command integration", () => {
 
 	beforeEach(() => {
 		testDir = createTestDir();
-		context = { projectRoot: testDir };
+		const mockMCPContext: MCPContext = {
+			isMCP: false,
+			detectionMethod: "none",
+		};
+		context = { projectRoot: testDir, mcpContext: mockMCPContext };
 		tasksDir = path.join(testDir, "tasks");
 		refDir = path.join(testDir, ".taskflow", "ref");
 

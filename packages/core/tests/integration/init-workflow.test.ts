@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { CommandContext } from "../../src/commands/base.js";
 import { InitCommand } from "../../src/commands/init.js";
 import { StatusCommand } from "../../src/commands/workflow/status.js";
+import type { MCPContext } from "../../src/lib/mcp-detector";
 import { createTestDir } from "../setup.js";
 
 describe("Init Workflow Integration", () => {
@@ -16,7 +17,11 @@ describe("Init Workflow Integration", () => {
 
 	beforeEach(() => {
 		testDir = createTestDir();
-		context = { projectRoot: testDir };
+		const mockMCPContext: MCPContext = {
+			isMCP: false,
+			detectionMethod: "none",
+		};
+		context = { projectRoot: testDir, mcpContext: mockMCPContext };
 	});
 
 	it("should initialize project successfully", async () => {

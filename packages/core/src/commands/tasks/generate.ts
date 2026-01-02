@@ -21,7 +21,12 @@ import type {
 import { BaseCommand, type CommandResult } from "../base.js";
 
 export class TasksGenerateCommand extends BaseCommand {
+	protected override requiresLLM = true;
+
 	async execute(prdFile?: string): Promise<CommandResult> {
+		// Validate LLM availability if not in MCP mode
+		this.validateLLM("tasks:generate");
+
 		const configLoader = new ConfigLoader(this.context.projectRoot);
 		const config = configLoader.load();
 		const paths = configLoader.getPaths();

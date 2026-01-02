@@ -8,6 +8,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { CommandContext } from "../../src/commands/base.js";
 import { UpgradeCommand } from "../../src/commands/upgrade.js";
+import type { MCPContext } from "../../src/lib/mcp-detector";
 import { createTestDir } from "../setup.js";
 
 describe("UpgradeCommand", () => {
@@ -16,7 +17,11 @@ describe("UpgradeCommand", () => {
 
 	beforeEach(() => {
 		testDir = createTestDir();
-		context = { projectRoot: testDir };
+		const mockMCPContext: MCPContext = {
+			isMCP: false,
+			detectionMethod: "none",
+		};
+		context = { projectRoot: testDir, mcpContext: mockMCPContext };
 
 		// Create basic .taskflow structure
 		const taskflowDir = path.join(testDir, ".taskflow");
@@ -31,7 +36,14 @@ describe("UpgradeCommand", () => {
 			const emptyDir = fs.mkdtempSync(
 				path.join(os.tmpdir(), "taskflow-test-empty-"),
 			);
-			const cmd = new UpgradeCommand({ projectRoot: emptyDir });
+			const mockMCPContext: MCPContext = {
+				isMCP: false,
+				detectionMethod: "none",
+			};
+			const cmd = new UpgradeCommand({
+				projectRoot: emptyDir,
+				mcpContext: mockMCPContext,
+			});
 
 			const result = await cmd.execute();
 

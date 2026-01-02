@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BaseCommand, type CommandResult } from "../../src/commands/base.js";
+import type { MCPContext } from "../../src/lib/mcp-detector";
 import { LLMProvider } from "../../src/llm/base.js";
 
 // Mock implementation of BaseCommand for testing
@@ -55,7 +56,11 @@ describe("Error Handling", () => {
 		mockProvider = new MockProvider();
 
 		// Create command instance
-		command = new TestCommand({ projectRoot });
+		const mockMCPContext: MCPContext = {
+			isMCP: false,
+			detectionMethod: "none",
+		};
+		command = new TestCommand({ projectRoot, mcpContext: mockMCPContext });
 
 		// Inject mock provider
 		// @ts-expect-error - accessing protected property

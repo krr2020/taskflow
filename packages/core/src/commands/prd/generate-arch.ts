@@ -9,10 +9,15 @@ import { getRefFilePath, REF_FILES } from "../../lib/config-paths.js";
 import { BaseCommand, type CommandResult } from "../base.js";
 
 export class PrdGenerateArchCommand extends BaseCommand {
+	protected override requiresLLM = true;
+
 	async execute(
 		prdFile: string,
 		instructions?: string,
 	): Promise<CommandResult> {
+		// Validate LLM availability if not in MCP mode
+		this.validateLLM("prd:generate-arch");
+
 		const configLoader = new ConfigLoader(this.context.projectRoot);
 		const paths = configLoader.getPaths();
 

@@ -2,6 +2,7 @@
  * Init command - Initialize taskflow in a project
  */
 
+import fs from "node:fs";
 import path from "node:path";
 import { ConfigLoader } from "../lib/config-loader.js";
 import { getProjectPaths, TEMPLATE_FILES } from "../lib/config-paths.js";
@@ -16,6 +17,47 @@ import {
 import { ensureAllDirs } from "../lib/path-utils.js";
 import { getTemplateDir } from "../lib/template-utils.js";
 import { BaseCommand, type CommandResult } from "./base.js";
+
+// Default placeholder templates for project files
+const DEFAULT_PLACEHOLDER_TEMPLATES: Record<string, string> = {
+	"coding-standards.md": `# Coding Standards
+
+## Overview
+This document defines the coding standards for this project.
+
+## General Principles
+<!-- Add your coding principles here -->
+
+## Language-Specific Standards
+<!-- Add language-specific guidelines here -->
+
+## Code Review Checklist
+<!-- Add review criteria here -->
+
+## Formatting
+<!-- Add formatting rules here -->
+`,
+	"architecture-rules.md": `# Architecture Rules
+
+## Overview
+This document defines the architectural guidelines for this project.
+
+## Architecture Principles
+<!-- Add your architecture principles here -->
+
+## Design Patterns
+<!-- Add approved design patterns here -->
+
+## Technology Stack
+<!-- Document your tech stack here -->
+
+## Integration Guidelines
+<!-- Add integration rules here -->
+
+## Decision Records
+<!-- Add ADRs here -->
+`,
+};
 
 interface VersionInfo {
 	templateVersion: string;
@@ -94,43 +136,108 @@ export class InitCommand extends BaseCommand {
 		const templatesDir = getTemplateDir();
 
 		let copiedFiles = 0;
+		const fileDetails: string[] = [];
 
 		// Copy protocol files
 		for (const [_key, sourcePath] of Object.entries(TEMPLATE_FILES.protocols)) {
 			const fullSourcePath = path.join(templatesDir, sourcePath);
-			const destPath = path.join(paths.refDir, path.basename(sourcePath));
+			const fileName = path.basename(sourcePath);
+			const destPath = path.join(paths.refDir, fileName);
 
-			if (exists(fullSourcePath)) {
-				copyFile(fullSourcePath, destPath);
-				copiedFiles++;
+			try {
+				if (exists(fullSourcePath)) {
+					copyFile(fullSourcePath, destPath);
+					copiedFiles++;
+					fileDetails.push(`  ✓ Copied: ${fileName}`);
+				} else {
+					fileDetails.push(`  ⚠ Skipped: ${fileName} (template not found)`);
+				}
+			} catch (error) {
+				fileDetails.push(
+					`  ✗ Failed to copy: ${fileName} - ${error instanceof Error ? error.message : String(error)}`,
+				);
 			}
 		}
 
 		// Copy PRD files
 		for (const [_key, sourcePath] of Object.entries(TEMPLATE_FILES.prd)) {
 			const fullSourcePath = path.join(templatesDir, sourcePath);
-			const destPath = path.join(paths.refDir, path.basename(sourcePath));
+			const fileName = path.basename(sourcePath);
+			const destPath = path.join(paths.refDir, fileName);
 
-			if (exists(fullSourcePath)) {
-				copyFile(fullSourcePath, destPath);
-				copiedFiles++;
+			try {
+				if (exists(fullSourcePath)) {
+					copyFile(fullSourcePath, destPath);
+					copiedFiles++;
+					fileDetails.push(`  ✓ Copied: ${fileName}`);
+				} else {
+					fileDetails.push(`  ⚠ Skipped: ${fileName} (template not found)`);
+				}
+			} catch (error) {
+				fileDetails.push(
+					`  ✗ Failed to copy: ${fileName} - ${error instanceof Error ? error.message : String(error)}`,
+				);
 			}
 		}
 
-		// Note: coding-standards.md and architecture-rules.md are NOT copied during init
-		// These should be generated via: taskflow prd generate-arch <prd-file>
-		// Skipping project template files to allow generate-arch command to work correctly
+		// Create project template files (coding-standards.md, architecture-rules.md)
+		// Copy from templates if available, otherwise create from default placeholders
+		for (const [_key, sourcePath] of Object.entries(TEMPLATE_FILES.project)) {
+			const fullSourcePath = path.join(templatesDir, sourcePath);
+			const fileName = path.basename(sourcePath);
+			const destPath = path.join(paths.refDir, fileName);
+
+			try {
+				if (exists(fullSourcePath)) {
+					// Copy from template if available
+					copyFile(fullSourcePath, destPath);
+					copiedFiles++;
+					fileDetails.push(`  ✓ Copied: ${fileName}`);
+				} else if (DEFAULT_PLACEHOLDER_TEMPLATES[fileName]) {
+					// Create placeholder from default template
+					fs.writeFileSync(
+						destPath,
+						DEFAULT_PLACEHOLDER_TEMPLATES[fileName],
+						"utf-8",
+					);
+					copiedFiles++;
+					fileDetails.push(`  ✓ Created: ${fileName} (default placeholder)`);
+				} else {
+					// Log warning for missing template without default
+					console.warn(
+						`  ⚠ Skipped: ${fileName} (no template or default available)`,
+					);
+					fileDetails.push(
+						`  ⚠ Skipped: ${fileName} (no template or default available)`,
+					);
+				}
+			} catch (error) {
+				fileDetails.push(
+					`  ✗ Failed to create: ${fileName} - ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
 
 		// Copy retrospective file
 		for (const [_key, sourcePath] of Object.entries(
 			TEMPLATE_FILES.retrospective,
 		)) {
 			const fullSourcePath = path.join(templatesDir, sourcePath);
-			const destPath = path.join(paths.refDir, path.basename(sourcePath));
+			const fileName = path.basename(sourcePath);
+			const destPath = path.join(paths.refDir, fileName);
 
-			if (exists(fullSourcePath)) {
-				copyFile(fullSourcePath, destPath);
-				copiedFiles++;
+			try {
+				if (exists(fullSourcePath)) {
+					copyFile(fullSourcePath, destPath);
+					copiedFiles++;
+					fileDetails.push(`  ✓ Copied: ${fileName}`);
+				} else {
+					fileDetails.push(`  ⚠ Skipped: ${fileName} (template not found)`);
+				}
+			} catch (error) {
+				fileDetails.push(
+					`  ✗ Failed to copy: ${fileName} - ${error instanceof Error ? error.message : String(error)}`,
+				);
 			}
 		}
 
@@ -140,11 +247,23 @@ export class InitCommand extends BaseCommand {
 
 		for (const [_key, sourcePath] of Object.entries(TEMPLATE_FILES.skills)) {
 			const fullSourcePath = path.join(templatesDir, sourcePath);
+			const fileName = path.basename(sourcePath);
 			const destPath = path.join(paths.refDir, sourcePath);
 
-			if (exists(fullSourcePath)) {
-				copyFile(fullSourcePath, destPath);
-				copiedFiles++;
+			try {
+				if (exists(fullSourcePath)) {
+					copyFile(fullSourcePath, destPath);
+					copiedFiles++;
+					fileDetails.push(`  ✓ Copied: skills/${fileName}`);
+				} else {
+					fileDetails.push(
+						`  ⚠ Skipped: skills/${fileName} (template not found)`,
+					);
+				}
+			} catch (error) {
+				fileDetails.push(
+					`  ✗ Failed to copy: skills/${fileName} - ${error instanceof Error ? error.message : String(error)}`,
+				);
 			}
 		}
 
@@ -157,17 +276,37 @@ export class InitCommand extends BaseCommand {
 		};
 		writeJson(versionFile, versionInfo);
 
+		// Build output message with file details
+		const outputLines = [
+			"✓ Created taskflow.config.json",
+			"✓ Created tasks/ directory",
+			"✓ Created .taskflow/ref/ directory",
+			"✓ Created .taskflow/logs/ directory",
+			exists(packageJsonPath) ? "✓ Added 'task' script to package.json" : "",
+		].filter(Boolean);
+
+		// Add template file details if any files were copied
+		if (fileDetails.length > 0) {
+			outputLines.push("");
+			outputLines.push(`Template Files (${copiedFiles}):`);
+			outputLines.push(...fileDetails);
+		}
+
+		// Add context-specific guidance
+		if (this.mcpContext.isMCP) {
+			outputLines.push("");
+			outputLines.push("✓ Running in MCP mode (AI-assisted)");
+		} else {
+			outputLines.push("");
+			outputLines.push("ℹ Running in direct CLI mode");
+			outputLines.push("ℹ Configure AI provider for generate commands:");
+			outputLines.push(
+				"   taskflow configure ai --provider <provider> --apiKey <key> --model <model>",
+			);
+		}
+
 		return this.success(
-			[
-				"✓ Created taskflow.config.json",
-				"✓ Created tasks/ directory",
-				"✓ Created .taskflow/ref/ directory",
-				"✓ Created .taskflow/logs/ directory",
-				exists(packageJsonPath) ? "✓ Added 'task' script to package.json" : "",
-				`✓ Copied ${copiedFiles} template files`,
-			]
-				.filter(Boolean)
-				.join("\n"),
+			outputLines.join("\n"),
 			[
 				"1. Create a PRD (Product Requirements Document):",
 				"   Run: taskflow prd create <feature-name>",

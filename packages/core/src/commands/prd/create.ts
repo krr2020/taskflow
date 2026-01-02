@@ -7,16 +7,88 @@ import path from "node:path";
 import { ConfigLoader } from "../../lib/config-loader.js";
 import { getRefFilePath, REF_FILES } from "../../lib/config-paths.js";
 import { ensureDir, exists } from "../../lib/file-utils.js";
+import { PRDInteractiveSession } from "../../lib/prd-interactive-session.js";
 import { buildPRDContext } from "../../llm/context-priorities.js";
 import { validatePRD } from "../../llm/validators.js";
 import { BaseCommand, type CommandResult } from "../base.js";
 
+/**
+ * Interactive info gathered from user
+ */
+interface InteractiveInfo {
+	featureName: string;
+	title: string;
+	description: string;
+	targetUsers: string;
+	goals: string[];
+	successCriteria: string[];
+}
+
+/**
+ * Gather interactive information from user for PRD creation
+ */
+async function gatherInteractiveInfo(
+	command: BaseCommand,
+	featureName?: string,
+): Promise<InteractiveInfo> {
+	const session = new PRDInteractiveSession(command);
+	const sessionData = await session.start(featureName);
+
+	return {
+		featureName: sessionData.featureName,
+		title: sessionData.title,
+		description: sessionData.overview,
+		targetUsers: sessionData.targetAudience,
+		goals: sessionData.userStories || [],
+		successCriteria: sessionData.successCriteria || [],
+	};
+}
+
 export class PrdCreateCommand extends BaseCommand {
+	protected override requiresLLM = true;
+
 	async execute(
 		featureName: string,
 		description?: string,
 		title?: string,
+		interactive?: boolean,
 	): Promise<CommandResult> {
+		// Validate LLM availability if not in MCP mode
+		this.validateLLM("prd:create");
+
+		// Interactive mode: gather information
+		if (interactive) {
+			const interactiveInfo = await gatherInteractiveInfo(this, featureName);
+			featureName = interactiveInfo.featureName;
+			title = interactiveInfo.title || title;
+			description = interactiveInfo.description || description;
+
+			// Add interactive details to description
+			const extraDetails: string[] = [];
+			if (interactiveInfo.targetUsers) {
+				extraDetails.push(`**Target Users:** ${interactiveInfo.targetUsers}`);
+			}
+			if (interactiveInfo.goals && interactiveInfo.goals.length > 0) {
+				extraDetails.push(
+					`**Key Goals:**\n${interactiveInfo.goals.map((g) => `- ${g}`).join("\n")}`,
+				);
+			}
+			if (
+				interactiveInfo.successCriteria &&
+				interactiveInfo.successCriteria.length > 0
+			) {
+				extraDetails.push(
+					`**Success Criteria:**\n${interactiveInfo.successCriteria.map((sc) => `- ${sc}`).join("\n")}`,
+				);
+			}
+
+			if (extraDetails.length > 0) {
+				description = description
+					? `${description}\n\n${extraDetails.join("\n\n")}`
+					: extraDetails.join("\n\n");
+			}
+		}
+
 		const configLoader = new ConfigLoader(this.context.projectRoot);
 		const paths = configLoader.getPaths();
 

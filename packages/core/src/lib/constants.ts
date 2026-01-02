@@ -3,6 +3,8 @@
  * This file contains all hardcoded values used throughout the codebase
  */
 
+import os from "node:os";
+
 // ============================================================================
 // Directory Names
 // ============================================================================
@@ -70,7 +72,7 @@ export const VALIDATION_LIMITS = {
 export const MESSAGES = {
 	AUTO_STASH_MESSAGE: "Auto-stash by taskflow before branch switch",
 	COMMIT_TEMP_FILE: "taskflow-commit-msg.txt",
-	COMMIT_TEMP_DIR: "/tmp",
+	COMMIT_TEMP_DIR: os.tmpdir(),
 } as const;
 
 // ============================================================================

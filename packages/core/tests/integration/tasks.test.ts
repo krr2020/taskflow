@@ -4,12 +4,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../../src/commands/base.js";
 import { InitCommand } from "../../src/commands/init.js";
 import { TasksAddCommand } from "../../src/commands/tasks/add.js";
 import { TasksGenerateCommand } from "../../src/commands/tasks/generate.js";
 import { TasksRefineCommand } from "../../src/commands/tasks/refine.js";
+import type { MCPContext } from "../../src/lib/mcp-detector";
 import { createTestDir } from "../setup.js";
 
 describe("Task Commands Integration", () => {
@@ -18,7 +19,16 @@ describe("Task Commands Integration", () => {
 
 	beforeEach(() => {
 		testDir = createTestDir();
-		context = { projectRoot: testDir };
+		const mockMCPContext: MCPContext = {
+			isMCP: true,
+			detectionMethod: "test",
+			serverName: "test-mcp",
+		};
+		context = { projectRoot: testDir, mcpContext: mockMCPContext };
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
 	});
 
 	describe("Tasks Generate Command", () => {
@@ -29,6 +39,7 @@ describe("Task Commands Integration", () => {
 
 			// Try to generate without PRD
 			const cmd = new TasksGenerateCommand(context);
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
 			const result = await cmd.execute();
 
 			expect(result.success).toBe(false);
@@ -46,6 +57,7 @@ describe("Task Commands Integration", () => {
 
 			// Try to generate with non-existent PRD
 			const cmd = new TasksGenerateCommand(context);
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
 			const result = await cmd.execute("non-existent.md");
 
 			expect(result.success).toBe(false);
@@ -79,6 +91,7 @@ describe("Task Commands Integration", () => {
 
 			// Generate tasks (should provide guidance)
 			const cmd = new TasksGenerateCommand(context);
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
 			const result = await cmd.execute("test-prd.md");
 
 			expect(result.success).toBe(true);
@@ -100,6 +113,7 @@ describe("Task Commands Integration", () => {
 
 			// Generate without argument
 			const cmd = new TasksGenerateCommand(context);
+			vi.spyOn(cmd as any, "isLLMAvailable").mockReturnValue(false);
 			const result = await cmd.execute();
 
 			expect(result.success).toBe(true);
