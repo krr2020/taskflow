@@ -28,7 +28,7 @@ Add to your `claude_desktop_config.json` (located at `~/Library/Application Supp
 After updating the configuration:
 1. Restart Claude Desktop
 2. Look for the 🔌 tools menu
-3. You should see 13 Taskflow tools available
+3. You should see 21 Taskflow tools available
 
 ### Option 2: Run Standalone
 
@@ -36,7 +36,28 @@ After updating the configuration:
 npx @krr2020/taskflow-mcp
 ```
 
-## 🛠️ Available Tools (13 Total)
+## 📁 Directory Structure
+
+Tasks are organized in a hierarchical structure:
+
+```
+tasks/
+├── project-index.json
+└── F[N]-[feature-name]/
+    ├── F[N]-[feature-name].json
+    └── S[N].[M]-[story-name]/
+        └── T[N].[M].[K]-[task-title].json
+```
+
+- **Feature:** `N` (e.g., `1`, `2`)
+- **Story:** `N.M` (e.g., `1.1`, `1.2`)
+- **Task:** `N.M.K` (e.g., `1.1.0`, `1.1.1`)
+
+> For complete format specification including templates and conventions, see [task-generation.md](./resources/task-generation.md)
+
+---
+
+## 🛠️ Available Tools (21 Total)
 
 ### Initialization
 
@@ -84,6 +105,7 @@ Create a new PRD template for defining features.
 
 **Inputs:**
 - `featureName` (required): Name of feature (e.g., "user-authentication")
+- `description` (optional): Feature description/requirements
 
 **Actions:**
 - Generates structured markdown template in `tasks/prds/`
@@ -228,17 +250,132 @@ List all retrospective entries.
 
 ---
 
+### Additional Commands
+
+#### `do_task`
+Get AI guidance for the next step of the current task.
+
+**Inputs:**
+- `taskId` (required): Task ID in format N.M.K
+
+**Actions:**
+- Analyzes current task state
+- Provides AI-generated next steps
+
+---
+
+#### `tasks_refine`
+Refine existing task breakdown with AI guidance.
+
+**Inputs:**
+- `instructions` (required): Refinement instructions
+
+**Actions:**
+- Updates task breakdown based on instructions
+- Maintains consistency with existing structure
+
+---
+
+#### `tasks_add`
+Add a new task to existing feature/story.
+
+**Inputs:**
+- `featureId` (required): Feature ID
+- `storyId` (required): Story ID
+- `title` (required): Task title
+- `description` (optional): Task description
+- `skill` (optional): Task skill (backend, frontend, fullstack, devops, docs, mobile)
+- `dependencies` (optional): Comma-separated task IDs
+
+**Actions:**
+- Adds task to specified story
+- Updates project-index.json
+
+---
+
+#### `task_create`
+Create a standalone or intermittent task.
+
+**Inputs:**
+- `title` (required): Task title
+- `description` (optional): Task description
+- `skill` (optional): Task skill
+- `intermittent` (optional): Create as intermittent task (F0)
+
+**Actions:**
+- Creates new task file
+- Adds to F0 if intermittent
+
+---
+
+#### `prd_update_standards`
+Add rules to coding-standards.md reference file.
+
+**Inputs:**
+- `rule` (required): Rule to add
+
+**Actions:**
+- Updates coding-standards.md in .taskflow/ref/
+
+---
+
+#### `prd_update_arch`
+Add rules to architecture-rules.md reference file.
+
+**Inputs:**
+- `rule` (required): Architectural rule to add
+
+**Actions:**
+- Updates architecture-rules.md in .taskflow/ref/
+
+---
+
+#### `configure_ai`
+Configure AI/LLM provider settings.
+
+**Inputs:**
+- `provider` (optional): AI provider
+- `apiKey` (optional): API key
+- `model` (optional): Model to use
+- `planningProvider` (optional): Planning phase provider
+- `executionProvider` (optional): Execution phase provider
+- `analysisProvider` (optional): Analysis phase provider
+- `planningApiKey` (optional): Planning phase API key
+- `executionApiKey` (optional): Execution phase API key
+- `analysisApiKey` (optional): Analysis phase API key
+- `planningModel` (optional): Planning phase model
+- `executionModel` (optional): Execution phase model
+- `analysisModel` (optional): Analysis phase model
+
+**Actions:**
+- Updates taskflow.config.json with AI settings
+- Supports multi-phase configuration
+
+---
+
+#### `upgrade_templates`
+Upgrade .taskflow reference files to latest templates.
+
+**Inputs:**
+- `skipPrompt` (optional): Skip confirmation prompts
+
+**Actions:**
+- Updates reference files in .taskflow/ref/
+- Preserves user customizations where possible
+
+---
+
 ## 🏗️ Architecture
 
 This MCP server is a thin wrapper around `@krr2020/taskflow`:
 
 ```
 MCP Server (index.ts)
-  ├── Tool Definitions (13 tools)
+  ├── Tool Definitions (21 tools)
   ├── Input Validation (Zod schemas)
   └── Command Delegation
       └── @krr2020/taskflow
-          ├── 13 Command Classes
+          ├── 21 Command Classes
           └── 8 Library Modules
 ```
 

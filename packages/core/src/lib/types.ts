@@ -69,6 +69,7 @@ export const TaskSkillSchema = z.enum([
 	"devops",
 	"docs",
 	"development",
+	"mobile",
 ]);
 export type TaskSkill = z.infer<typeof TaskSkillSchema>;
 

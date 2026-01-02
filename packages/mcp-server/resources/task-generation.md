@@ -2,6 +2,8 @@
 
 **Purpose:** Break PRDs into Features → Stories → Tasks (JSON-based)
 
+> **Canonical Reference:** This document defines the authoritative format for task generation and directory structure.
+
 ---
 
 ## Directory Structure
@@ -169,3 +171,12 @@ tasks/
 - **Sequential stories:** Complete all tasks in one story before starting another.
 - **Branch per story:** Each story gets `story/S[N].[M]-[story-name]` branch.
 - **Kebab-case:** All folder/file names use kebab-case.
+
+---
+
+## Referenced By
+
+This specification is referenced by:
+- [Core Package README](../../core/README.md)
+- [MCP Server README](../README.md)
+- [Architecture Documentation](../../../docs/ARCHITECTURE.md)

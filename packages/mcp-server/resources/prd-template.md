@@ -17,5 +17,5 @@ Assume the primary reader is a **junior developer**. Requirements should be expl
 ## Output
 
 *   **Format:** Markdown (`.md`)
-*   **Location:** `/tasks/`
+*   **Location:** `/tasks/prds/`
 *   **Filename:** `prd-[feature-name].md`

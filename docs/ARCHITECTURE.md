@@ -74,11 +74,17 @@ Taskflow provides a state-machine-based workflow for executing development tasks
 ## Task Hierarchy
 
 ```
-Project
-└── Features (F1, F2, ...)
-    └── Stories (S1.1, S1.2, ...)
-        └── Tasks (T1.1.0, T1.1.1, ...)
+Project (tasks/ directory)
+├── project-index.json
+└── Features (F[N]-[feature-name]/)
+    ├── F[N]-[feature-name].json
+    └── Stories (S[N].[M]-[story-name]/)
+        └── Tasks (T[N].[M].[K]-[task-title].json)
+
+Example: F1-user-auth/S1.1-login-endpoint/T1.1.0-setup-auth-tables.json
 ```
+
+> Full specification: packages/mcp-server/resources/task-generation.md
 
 ## Task File Schema
 

@@ -1,8 +1,12 @@
 {
 	"name": "@krr2020/taskflow-mcp",
-	"version": "0.1.0-beta.1",
+	"version": "0.1.0-beta.3",
 	"description": "MCP Server for Taskflow",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/krr2020/taskflow.git"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
