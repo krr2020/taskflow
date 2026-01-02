@@ -9,6 +9,19 @@ import { BaseCommand, type CommandResult } from "../base.js";
 
 interface ProgressTask {
 	id: string;
+	title: string;
+	description: string;
+	skill: string;
+	status: string;
+	estimatedHours: number;
+	dependencies: string[];
+	context: string[];
+	subtasks: Array<{
+		id: string;
+		description: string;
+		status: string;
+	}>;
+	acceptanceCriteria: string[];
 }
 
 interface ProgressStory {
@@ -226,7 +239,7 @@ Generate a complete task definition that:
 		this.costTracker.trackUsage(response);
 
 		// Parse JSON response
-		let taskData: Record<string, unknown>;
+		let taskData: ProgressTask;
 		try {
 			let jsonContent = response.content.trim();
 			if (jsonContent.startsWith("```")) {
@@ -234,7 +247,7 @@ Generate a complete task definition that:
 					.replace(/```json\n?/g, "")
 					.replace(/```\n?/g, "");
 			}
-			taskData = JSON.parse(jsonContent);
+			taskData = JSON.parse(jsonContent) as ProgressTask;
 		} catch (error) {
 			throw new Error(
 				`Failed to parse LLM response: ${error instanceof Error ? error.message : String(error)}`,

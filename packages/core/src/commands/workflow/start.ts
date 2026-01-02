@@ -25,6 +25,7 @@ import {
 	TaskNotFoundError,
 } from "../../lib/errors.js";
 import { verifyBranch } from "../../lib/git.js";
+import { consoleOutput } from "../../lib/output.js";
 import { BaseCommand, type CommandResult } from "../base.js";
 
 export class StartCommand extends BaseCommand {
@@ -58,7 +59,7 @@ export class StartCommand extends BaseCommand {
 
 		// If active task exists and we're starting an intermittent task, show warning
 		if (activeTask && isSwitchingToIntermittent) {
-			console.log(
+			consoleOutput(
 				`\n⚠️  Switching to intermittent task. Main task ${activeTask.taskId} is paused.\n`,
 			);
 		}

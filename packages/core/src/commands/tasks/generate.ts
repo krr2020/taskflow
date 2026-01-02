@@ -12,7 +12,12 @@ import {
 	SKILL_FILES,
 } from "../../lib/config-paths.js";
 import { saveFeature, saveProjectIndex } from "../../lib/data-access.js";
-import type { TaskflowConfig } from "../../lib/types.js";
+import type {
+	Feature,
+	TaskflowConfig,
+	TaskRef,
+	TasksProgress,
+} from "../../lib/types.js";
 import { BaseCommand, type CommandResult } from "../base.js";
 
 export class TasksGenerateCommand extends BaseCommand {
@@ -578,11 +583,46 @@ export class TasksGenerateCommand extends BaseCommand {
 		// Create task structure
 		await this.createTaskStructure(tasksDir, tasksData);
 
+		// Convert to TasksProgress for saving
+		const tasksProgress: TasksProgress = {
+			project: tasksData.project,
+			features: tasksData.features.map((f) => ({
+				...f,
+				status: f.status as
+					| "not-started"
+					| "in-progress"
+					| "completed"
+					| "blocked"
+					| "on-hold",
+				stories: f.stories.map((s) => ({
+					...s,
+					status: s.status as
+						| "not-started"
+						| "in-progress"
+						| "completed"
+						| "blocked"
+						| "on-hold",
+					tasks: s.tasks.map((t) => {
+						const {
+							description: _desc,
+							skill: _skill,
+							estimatedHours: _est,
+							context: _ctx,
+							subtasks: _sub,
+							acceptanceCriteria: _acc,
+							...taskRef
+						} = t;
+						return taskRef as TaskRef;
+					}),
+				})),
+			})),
+		};
+
 		// Write tasks progress
 		await this.writeTasksProgress(tasksDir, tasksData);
 
 		// Save project index (required for loading progress)
-		saveProjectIndex(tasksDir, tasksData);
+		saveProjectIndex(tasksDir, tasksProgress);
 
 		return this.success(
 			[
@@ -619,8 +659,9 @@ export class TasksGenerateCommand extends BaseCommand {
 		prdContent: string,
 		contextFiles: Array<{ name: string; content: string }>,
 		projectName: string,
-	): Promise<TasksData> {
-		if (!this.llmProvider) {
+	): Promise<TasksProgressWithDetails> {
+		const llmProvider = this.llmProvider;
+		if (!llmProvider) {
 			throw new Error("LLM provider not available");
 		}
 
@@ -724,7 +765,7 @@ IMPORTANT:
 		this.costTracker.trackUsage(response);
 
 		// Parse JSON response
-		let tasksData: TasksData;
+		let tasksData: TasksProgressWithDetails;
 		try {
 			// Clean up response (remove markdown code blocks if present)
 			let jsonContent = response.content.trim();
@@ -750,7 +791,7 @@ IMPORTANT:
 	 */
 	private async createTaskStructure(
 		tasksDir: string,
-		tasksData: TasksData,
+		tasksData: TasksProgressWithDetails,
 	): Promise<void> {
 		for (const feature of tasksData.features) {
 			// Set path and save feature
@@ -758,8 +799,8 @@ IMPORTANT:
 			const featureDir = path.join(tasksDir, feature.path);
 			fs.mkdirSync(featureDir, { recursive: true });
 
-			// Save feature file
-			saveFeature(tasksDir, feature);
+			// Save feature file (cast status to FeatureStatus)
+			saveFeature(tasksDir, feature as Feature);
 
 			for (const story of feature.stories) {
 				const storyDir = path.join(
@@ -788,55 +829,81 @@ IMPORTANT:
 	 */
 	private async writeTasksProgress(
 		tasksDir: string,
-		tasksData: TasksData,
+		tasksData: TasksProgressWithDetails,
 	): Promise<void> {
+		// Convert to TasksProgress by removing extra fields
+		const tasksProgress: TasksProgress = {
+			project: tasksData.project,
+			features: tasksData.features.map((f) => ({
+				...f,
+				status: f.status as
+					| "not-started"
+					| "in-progress"
+					| "completed"
+					| "blocked"
+					| "on-hold",
+				stories: f.stories.map((s) => ({
+					...s,
+					status: s.status as
+						| "not-started"
+						| "in-progress"
+						| "completed"
+						| "blocked"
+						| "on-hold",
+					tasks: s.tasks.map((t) => {
+						const {
+							description: _desc,
+							skill: _skill,
+							estimatedHours: _est,
+							context: _ctx,
+							subtasks: _sub,
+							acceptanceCriteria: _acc,
+							...taskRef
+						} = t;
+						return taskRef as TaskRef;
+					}),
+				})),
+			})),
+		};
+
 		const progressFilePath = path.join(tasksDir, "tasks-progress.json");
 		fs.writeFileSync(
 			progressFilePath,
-			JSON.stringify(tasksData, null, 2),
+			JSON.stringify(tasksProgress, null, 2),
 			"utf-8",
 		);
 	}
 }
 
-// Type definitions for task data
-interface TasksData {
-	project: string;
-	features: Feature[];
-}
-
-interface Feature {
-	id: string;
-	title: string;
-	description: string;
-	status: string;
-	path?: string;
-	stories: Story[];
-}
-
-interface Story {
-	id: string;
-	title: string;
-	description: string;
-	status: string;
-	tasks: Task[];
-}
-
-interface Task {
-	id: string;
-	title: string;
+// Type for full task data from LLM (includes extra fields for task files)
+interface TaskWithDetails extends TaskRef {
 	description: string;
 	skill: string;
-	status: string;
 	estimatedHours: number;
-	dependencies: string[];
 	context: string[];
-	subtasks: Subtask[];
+	subtasks: Array<{ id: string; description: string; status: string }>;
 	acceptanceCriteria: string[];
 }
 
-interface Subtask {
+// Type for story with detailed tasks (status is string for flexibility with JSON parsing)
+interface StoryWithDetails {
 	id: string;
-	description: string;
-	status: string;
+	title: string;
+	status: string; // Will be validated/cast later
+	tasks: TaskWithDetails[];
+}
+
+// Type for feature with detailed stories (status is string for flexibility with JSON parsing)
+interface FeatureWithDetails {
+	id: string;
+	title: string;
+	status: string; // Will be validated/cast later
+	path?: string;
+	stories: StoryWithDetails[];
+}
+
+// Type for tasks progress with detailed tasks (from LLM)
+interface TasksProgressWithDetails {
+	project: string;
+	features: FeatureWithDetails[];
 }

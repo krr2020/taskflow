@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ConfigLoader } from "../../lib/config-loader.js";
 import { getRefFilePath, REF_FILES } from "../../lib/config-paths.js";
+import { ensureDir, exists } from "../../lib/file-utils.js";
 import { buildPRDContext } from "../../llm/context-priorities.js";
 import { validatePRD } from "../../llm/validators.js";
 import { BaseCommand, type CommandResult } from "../base.js";
@@ -42,8 +43,8 @@ export class PrdCreateCommand extends BaseCommand {
 
 		// Create PRDs directory if it doesn't exist
 		const prdsDir = path.join(paths.tasksDir, "prds");
-		if (!fs.existsSync(prdsDir)) {
-			fs.mkdirSync(prdsDir, { recursive: true });
+		if (!exists(prdsDir)) {
+			ensureDir(prdsDir);
 		}
 
 		// Generate PRD filename with timestamp

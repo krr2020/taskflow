@@ -28,7 +28,9 @@ describe("UpgradeCommand", () => {
 		it("should fail if .taskflow directory does not exist", async () => {
 			// Create a fresh temporary directory that's NOT the testDir
 			// This test needs to verify command fails when .taskflow doesn't exist
-			const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "taskflow-test-empty-"));
+			const emptyDir = fs.mkdtempSync(
+				path.join(os.tmpdir(), "taskflow-test-empty-"),
+			);
 			const cmd = new UpgradeCommand({ projectRoot: emptyDir });
 
 			const result = await cmd.execute();
