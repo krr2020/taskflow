@@ -233,6 +233,19 @@ export const TaskflowConfigSchema = z.object({
 			openaiBaseUrl: z.string().optional(),
 			autoContinueTask: z.boolean().default(false),
 			clearContextOnComplete: z.boolean().default(true),
+			agentMode: z
+				.object({
+					enabled: z.boolean().default(false),
+					provider: z.string().optional(),
+					model: z.string().optional(),
+					format: z.enum(["xml", "json"]).default("xml"),
+					maxSteps: z.number().default(20),
+					allowedTools: z.array(z.string()).optional(),
+					externalTools: z.record(z.string(), z.string()).optional(),
+					interactive: z.boolean().default(true),
+					backup: z.boolean().default(true),
+				})
+				.optional(),
 		})
 		.optional(),
 });

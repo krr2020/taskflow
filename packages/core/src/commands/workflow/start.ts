@@ -11,6 +11,7 @@ import {
 import {
 	checkDependenciesMet,
 	findActiveTask,
+	findNextAvailableTask,
 	findTaskLocation,
 	getTaskFilePath,
 	getUnmetDependencies,
@@ -25,16 +26,37 @@ import {
 	TaskNotFoundError,
 } from "../../lib/errors.js";
 import { verifyBranch } from "../../lib/git.js";
+import { consoleOutput, icons } from "../../lib/output.js";
 import { TerminalFormatter } from "../../lib/terminal-formatter.js";
 import { BaseCommand, type CommandResult } from "../base.js";
 
 export class StartCommand extends BaseCommand {
-	async execute(taskId: string): Promise<CommandResult> {
+	async execute(taskIdInput?: string): Promise<CommandResult> {
 		const configLoader = new ConfigLoader(this.context.projectRoot);
 		const paths = configLoader.getPaths();
 
 		// Load tasks progress
 		const tasksProgress = loadTasksProgress(paths.tasksDir);
+
+		let taskId = taskIdInput;
+
+		if (!taskId) {
+			const next = findNextAvailableTask(tasksProgress);
+			if (!next) {
+				return this.failure(
+					"No available task found",
+					["All tasks are completed or blocked", "Check taskflow status"],
+					"Run 'taskflow status' to see project state",
+				);
+			}
+			taskId = next.task.id;
+			consoleOutput(
+				`Auto-selecting next task: ${taskId} - ${next.task.title}`,
+				{
+					icon: icons.info,
+				},
+			);
+		}
 
 		// Find task first to check if it's intermittent
 		const location = findTaskLocation(tasksProgress, taskId);

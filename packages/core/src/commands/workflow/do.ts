@@ -2,6 +2,7 @@
  * Do command - Get instructions for current status
  */
 
+import { AgentRunner } from "../../agent/runner.js";
 import { ConfigLoader } from "../../lib/config-loader.js";
 import {
 	getRefFilePath,
@@ -21,8 +22,9 @@ import { parseTaskId } from "../../lib/types.js";
 import { BaseCommand, type CommandResult } from "../base.js";
 
 export class DoCommand extends BaseCommand {
-	async execute(): Promise<CommandResult> {
+	async execute(options?: { guide?: boolean }): Promise<CommandResult> {
 		const configLoader = new ConfigLoader(this.context.projectRoot);
+		const config = configLoader.load();
 		const paths = configLoader.getPaths();
 
 		const tasksProgress = loadTasksProgress(paths.tasksDir);
@@ -32,6 +34,26 @@ export class DoCommand extends BaseCommand {
 			throw new NoActiveSessionError();
 		}
 
+		// Check for Agent Mode
+		// If agentMode is enabled AND we are not in --guide mode
+		if (config.ai?.enabled && config.ai.agentMode?.enabled && !options?.guide) {
+			const runner = new AgentRunner(
+				{
+					taskId: activeTask.taskId,
+					status: activeTask.content.status,
+					projectRoot: this.context.projectRoot,
+					files: activeTask.content.context || [],
+					// In a real implementation, we would pass validation errors here
+					// For now, we assume the agent will read them or run checks itself
+				},
+				configLoader,
+			);
+			await runner.run();
+			// Agent runner handles its own output and loop
+			return this.success("", "");
+		}
+
+		// Fallback to Standard Guidance Mode
 		const location = findTaskLocation(tasksProgress, activeTask.taskId);
 		if (!location) {
 			throw new NoActiveSessionError();

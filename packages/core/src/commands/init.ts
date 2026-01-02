@@ -2,6 +2,7 @@
  * Init command - Initialize taskflow in a project
  */
 
+import fs from "node:fs";
 import path from "node:path";
 import pc from "picocolors";
 import { ConfigLoader } from "../lib/config-loader.js";
@@ -238,6 +239,29 @@ export class InitCommand extends BaseCommand {
 			customized: [],
 		};
 		writeJson(versionFile, versionInfo);
+
+		// Manage .gitignore
+		const gitignorePath = path.join(this.context.projectRoot, ".gitignore");
+		const ignoreEntries = [
+			"",
+			"# TaskFlow",
+			".taskflow/backups",
+			".taskflow/logs",
+			".taskflow/sessions",
+			".taskflow/.version",
+		];
+
+		if (exists(gitignorePath)) {
+			const content = fs.readFileSync(gitignorePath, "utf-8");
+			const newEntries = ignoreEntries.filter(
+				(entry) => entry && !content.includes(entry.trim()),
+			);
+			if (newEntries.length > 0) {
+				fs.appendFileSync(gitignorePath, `${newEntries.join("\n")}\n`);
+			}
+		} else {
+			fs.writeFileSync(gitignorePath, `${ignoreEntries.join("\n")}\n`);
+		}
 
 		// Build output message with file details
 		const outputLines = [

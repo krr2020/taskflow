@@ -172,14 +172,36 @@ export function getTaskFilePath(
 
 	// Find task file by ID prefix
 	const files = listFiles(storyDir).filter((f) => f.startsWith(`T${task.id}`));
-	if (files.length === 0) {
-		consoleOutput(
-			`Debug: Task file not found in ${storyDir} starting with T${task.id}`,
-		);
-		return null;
+	if (files.length > 0) {
+		return path.join(storyDir, files[0] as string);
 	}
 
-	return path.join(storyDir, files[0] as string);
+	// Fallback: Recursive search if not found in expected location
+	// This handles cases where folder structure might have changed
+	consoleOutput(
+		`Debug: Task file not found in ${storyDir}, trying recursive search...`,
+	);
+	return findTaskFileRecursively(tasksDir, task.id);
+}
+
+function findTaskFileRecursively(dir: string, taskId: string): string | null {
+	if (!exists(dir)) return null;
+
+	const entries = fs.readdirSync(dir, { withFileTypes: true });
+	for (const entry of entries) {
+		const fullPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			const found = findTaskFileRecursively(fullPath, taskId);
+			if (found) return found;
+		} else if (
+			entry.isFile() &&
+			entry.name.startsWith(`T${taskId}`) &&
+			entry.name.endsWith(".json")
+		) {
+			return fullPath;
+		}
+	}
+	return null;
 }
 
 export function loadTaskFile(filePath: string): TaskFileContent | null {

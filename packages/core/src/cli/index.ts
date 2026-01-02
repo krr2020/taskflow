@@ -194,8 +194,8 @@ export async function runCLI() {
 	program
 		.command("start")
 		.description("Start working on a task (with AI context analysis)")
-		.argument("<task-id>", "Task ID (e.g., 1.1.0)")
-		.action(async (taskId: string) => {
+		.argument("[task-id]", "Task ID (e.g., 1.1.0)")
+		.action(async (taskId?: string) => {
 			try {
 				const cmd = new StartCommand(context);
 				const result = await cmd.execute(taskId);
@@ -252,10 +252,14 @@ export async function runCLI() {
 	program
 		.command("do")
 		.description("Execute the next step of the current task (with AI guidance)")
-		.action(async () => {
+		.option(
+			"--guide",
+			"Force guidance mode (text only) even if agent is enabled",
+		)
+		.action(async (options: { guide?: boolean }) => {
 			try {
 				const cmd = new DoCommand(context);
-				const result = await cmd.execute();
+				const result = await cmd.execute(options);
 				if (!result.success) {
 					consoleOutput(formatFailure(result));
 					process.exit(1);

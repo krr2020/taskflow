@@ -7,13 +7,28 @@ import path from "node:path";
 import { execaSync } from "execa";
 import { getExpectedBranchName } from "./config-paths.js";
 import { MESSAGES } from "./constants.js";
-import { GitOperationError, WrongBranchError } from "./errors.js";
+import {
+	GitOperationError,
+	TaskflowError,
+	WrongBranchError,
+} from "./errors.js";
 import { consoleOutput, icons } from "./output.js";
 import type { Story } from "./types.js";
 
 // ============================================================================
 // Branch Operations
 // ============================================================================
+
+export function isGitInitialized(): boolean {
+	try {
+		execaSync("git", ["rev-parse", "--is-inside-work-tree"], {
+			stdio: "ignore",
+		});
+		return true;
+	} catch {
+		return false;
+	}
+}
 
 export function getCurrentBranch(): string {
 	try {
@@ -55,6 +70,14 @@ export function getBranchSwitchCommand(
 }
 
 export function verifyBranch(story: Story): void {
+	if (!isGitInitialized()) {
+		throw new TaskflowError(
+			"Git is not initialized in this project",
+			"GIT_NOT_INITIALIZED",
+			"Run 'git init' and 'git commit -m \"Initial commit\"' to start tracking your work.",
+		);
+	}
+
 	const expected = getExpectedBranch(story);
 	const current = getCurrentBranch();
 
