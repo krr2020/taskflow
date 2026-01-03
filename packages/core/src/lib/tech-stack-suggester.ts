@@ -40,15 +40,16 @@ export class TechStackSuggester {
 	async suggest(prdContent: string): Promise<TechStackOption[]> {
 		const systemPrompt = `You are a senior software architect specializing in technology selection.
 
-Your task is to analyze a PRD and suggest 3-4 appropriate tech stack options.
+Your task is to analyze a PRD and suggest appropriate tech stack options (usually 1-5 depending on the variety of suitable approaches).
 
 CRITICAL RULES:
-1. Suggest CURRENT technologies (2026, not outdated stacks)
-2. Match stack to PRD requirements (e.g., real-time → WebSockets)
-3. Provide specific versions where relevant
-4. Mark ONE option as recommended
-5. Keep descriptions concise (1-2 sentences)
-6. Focus on proven, production-ready technologies
+1. Suggest CURRENT technologies (2026, not outdated stacks), unless the PRD specifically requests older/simpler tech.
+2. Match stack to PRD requirements (e.g., real-time → WebSockets).
+3. **If the PRD has explicit strict technology constraints** (e.g., 'Vanilla JS only', 'No Frameworks'), prioritize that as the top recommendation and do not suggest conflicting frameworks unless necessary for specific reasons.
+4. Provide specific versions where relevant.
+5. Mark ONE option as recommended.
+6. Keep descriptions concise (1-2 sentences).
+7. Focus on proven, production-ready technologies.
 
 Output ONLY valid JSON in this format:
 {
@@ -91,7 +92,7 @@ Output ONLY valid JSON in this format:
   ]
 }`;
 
-		const userPrompt = `Analyze this PRD and suggest 3-4 tech stack options:
+		const userPrompt = `Analyze this PRD and suggest appropriate tech stack options:
 
 ${prdContent}
 
@@ -102,6 +103,7 @@ Consider:
 - Authentication needs
 - Scalability requirements
 - Team size/skill level (if mentioned)
+- EXPLICIT CONSTRAINTS (e.g., 'Vanilla JS', 'No Database')
 
 Suggest options from simple → complex.`;
 
@@ -112,7 +114,7 @@ Suggest options from simple → complex.`;
 				{ role: "user", content: userPrompt },
 			],
 			{
-				maxTokens: 3000,
+				maxTokens: 8192,
 				temperature: 0.3,
 			},
 		);
@@ -156,10 +158,17 @@ Suggest options from simple → complex.`;
 			}
 
 			return options;
-		} catch (e) {
-			console.error("Failed to parse LLM response as JSON", e);
-			// Fallback or retry could go here, for now return empty or throw
-			throw new Error("Failed to parse tech stack suggestions from LLM");
+		} catch (_e) {
+			// Don't log to console.error to avoid double printing in CLI
+			// Include a snippet of the invalid JSON for debugging purposes in the error message
+			const snippet =
+				jsonContent.length > 100
+					? `${jsonContent.substring(0, 100)}...`
+					: jsonContent;
+
+			throw new Error(
+				`Failed to parse tech stack suggestions from LLM. Response might be truncated or invalid JSON.\nSnippet: ${snippet}`,
+			);
 		}
 	}
 

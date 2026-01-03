@@ -18,6 +18,7 @@ import { TasksAddCommand } from "../commands/tasks/add.js";
 import { TaskCreateCommand } from "../commands/tasks/create.js";
 import { TasksGenerateCommand } from "../commands/tasks/generate.js";
 import { TasksRefineCommand } from "../commands/tasks/refine.js";
+import { UiCommand } from "../commands/ui.js";
 import { UpgradeCommand } from "../commands/upgrade.js";
 import { CheckCommand } from "../commands/workflow/check.js";
 import { CommitCommand } from "../commands/workflow/commit.js";
@@ -428,16 +429,25 @@ export async function runCLI() {
 			"[prd-file]",
 			"PRD filename (optional - shows selection if not provided)",
 		)
-		.action(async (prdFile?: string) => {
-			try {
-				const cmd = new TasksGenerateCommand(context);
-				const result = await cmd.execute(prdFile);
-				console.log(formatSuccess(result));
-				process.exit(0);
-			} catch (error) {
-				handleError(error);
-			}
-		});
+		.option(
+			"--max-features <number>",
+			"Maximum number of features to generate (default: all, recommended: 5-10 for large PRDs)",
+		)
+		.action(
+			async (
+				prdFile: string | undefined,
+				options: { maxFeatures?: string },
+			) => {
+				try {
+					const cmd = new TasksGenerateCommand(context);
+					const result = await cmd.execute(prdFile, options);
+					console.log(formatSuccess(result));
+					process.exit(0);
+				} catch (error) {
+					handleError(error);
+				}
+			},
+		);
 
 	tasksCommand
 		.command("add")
@@ -586,6 +596,42 @@ export async function runCLI() {
 				const result = await cmd.execute(category);
 				console.log(formatSuccess(result));
 				process.exit(0);
+			} catch (error) {
+				handleError(error);
+			}
+		});
+
+	// ========================================
+	// UI COMMAND
+	// ========================================
+	program
+		.command("ui")
+		.description("Start the Taskflow UI dashboard")
+		.argument("[path]", "Path to the project (defaults to current directory)")
+		.option("--stop", "Stop the running UI server")
+		.option("--status", "Check if UI server is running")
+		.option("--port <port>", "Port to run on (default: 4500)")
+		.action(async (projectPath: string | undefined, options) => {
+			try {
+				const path = await import("node:path");
+				// Resolve project root if path is provided
+				const resolvedProjectRoot = projectPath 
+					? path.resolve(process.cwd(), projectPath) 
+					: context.projectRoot;
+
+				// Create a new context with the resolved project root
+				const cmdContext: CommandContext = {
+					...context,
+					projectRoot: resolvedProjectRoot
+				};
+
+				const cmd = new UiCommand(cmdContext);
+				const result = await cmd.execute(options);
+				console.log(formatSuccess(result));
+				// Don't exit if running server (execute returns pending promise)
+				if (options.stop || options.status) {
+					process.exit(0);
+				}
 			} catch (error) {
 				handleError(error);
 			}

@@ -63,6 +63,7 @@ export const VALIDATION_LIMITS = {
 	MAX_OUTPUT_BUFFER: 10 * 1024 * 1024, // 10MB
 	MAX_RETRIES: 3,
 	CACHE_TTL: 60000, // 1 minute
+	LLM_GENERATION_TIMEOUT: 5 * 60 * 1000, // 5 minutes
 } as const;
 
 // ============================================================================

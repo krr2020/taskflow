@@ -31,7 +31,8 @@ interface Question {
 	number: number;
 	text: string;
 	type: "multiple-choice" | "open-ended";
-	options?: string[]; // ['A. Option 1', 'B. Option 2']
+	options?: Array<{ letter: string; text: string; reason?: string }>;
+	recommendedOption?: string;
 }
 
 /**
@@ -274,26 +275,72 @@ export class PrdCreateCommand extends BaseCommand {
 		);
 
 		// Step 1: Generate questions
-		const questions = await this.generateQuestions(title, summary);
+		const currentQuestions = await this.generateQuestions(title, summary);
+		let currentAnswers: string[] = [];
 
 		// If no questions, generate PRD directly
-		if (questions.length === 0) {
+		if (currentQuestions.length === 0) {
 			console.log(
 				TerminalFormatter.success("Requirements are clear. Generating PRD..."),
 			);
-			return this.generatePRDDirectly(title, summary, paths);
+		} else {
+			// Step 2: Ask questions
+			console.log("");
+			this.displayQuestions(currentQuestions);
+
+			// Step 3: Get answers
+			currentAnswers = await this.getUserAnswersAllAtOnce(currentQuestions);
 		}
 
-		// Step 2: Ask questions
+		// Step 4: Generate initial PRD
 		console.log("");
-		this.displayQuestions(questions);
+		let prdContent = await this.generateFinalPRD(
+			title,
+			summary,
+			currentQuestions,
+			currentAnswers,
+			paths,
+		);
 
-		// Step 3: Get answers
-		const answers = await this.getUserAnswersAllAtOnce(questions);
+		// Step 5: Interactive Review Loop
+		while (true) {
+			console.log(`\n${TerminalFormatter.section("DRAFT PRD PREVIEW")}`);
+			// Show summary of sections
+			const lines = prdContent.split("\n");
+			const headers = lines.filter((l) => l.startsWith("#"));
+			console.log(pc.cyan("Structure:"));
+			headers.forEach((h) => {
+				console.log(`  ${h}`);
+			});
+			console.log(pc.dim("... (full content generated) ..."));
 
-		// Step 4: Generate final PRD
-		console.log("");
-		return this.generateFinalPRD(title, summary, questions, answers, paths);
+			console.log(`\n${TerminalFormatter.info("Review Options:")}`);
+			console.log("1. Approve and Save (Finalize)");
+			console.log("2. Request Changes / Add Information (Refine)");
+			console.log("3. Regenerate entirely (Restart)");
+
+			const choice = await this.promptUser("Select an option (1-3): ");
+
+			if (choice === "1") {
+				return prdContent;
+			} else if (choice === "2") {
+				const feedback = await this.promptUser(
+					"What would you like to change or add? ",
+				);
+				prdContent = await this.refinePRD(prdContent, feedback, paths);
+			} else if (choice === "3") {
+				console.log(TerminalFormatter.info("Regenerating PRD..."));
+				prdContent = await this.generateFinalPRD(
+					title,
+					summary,
+					currentQuestions,
+					currentAnswers,
+					paths,
+				);
+			} else {
+				console.log(TerminalFormatter.warning("Invalid option."));
+			}
+		}
 	}
 
 	/**
@@ -319,36 +366,19 @@ export class PrdCreateCommand extends BaseCommand {
 			temperature: 0.7,
 		});
 
-		const display = new StreamDisplay("Generating Questions");
 		let content = "";
-		let isFirstChunk = true;
 
 		for await (const chunk of stream) {
-			if (isFirstChunk) {
-				progress.stop();
-				isFirstChunk = false;
-			}
-			display.handleChunk(chunk);
 			content += chunk;
 		}
-		display.finish();
+
+		progress.stop();
 
 		if (!content || content.includes("NO_QUESTIONS_NEEDED")) {
 			return [];
 		}
 
 		return this.parseAllQuestions(content);
-	}
-
-	/**
-	 * Generate PRD directly without questions
-	 */
-	private async generatePRDDirectly(
-		title: string,
-		summary: string,
-		paths: ReturnType<ConfigLoader["getPaths"]>,
-	): Promise<string> {
-		return this.generateFinalPRD(title, summary, [], [], paths);
 	}
 
 	/**
@@ -409,9 +439,10 @@ QUESTIONS:
 2. [Question text] (Type: multiple-choice)
    A. [Option 1] (Reason: [Short reason for recommendation])
    B. [Option 2] (Reason: [Short reason for recommendation])
+   Recommended Option: [Letter]
 ...
 
-For multiple-choice questions, you MUST provide recommended options with a short reason for each option to guide the user.
+For multiple-choice questions, you MUST provide recommended options with a short reason for each option, AND explicitly state the "Recommended Option" on a separate line.
 
 If the summary is comprehensive and no questions are needed, reply with:
 NO_QUESTIONS_NEEDED`;
@@ -480,13 +511,26 @@ Please analyze this feature and generate clarifying questions if needed.`;
 				continue;
 			}
 
-			// Match option line: "A. Option"
-			const optionMatch = trimmed.match(/^([A-Z])\.\s+(.+)$/);
+			// Match recommended option line
+			const recommendedMatch = trimmed.match(/^Recommended Option:\s*([A-Z])/i);
+			if (recommendedMatch && currentQuestion && recommendedMatch[1]) {
+				currentQuestion.recommendedOption = recommendedMatch[1].toUpperCase();
+				continue;
+			}
+
+			// Match option line: "A. Option (Reason: ...)"
+			const optionMatch = trimmed.match(
+				/^([A-Z])\.\s+(.+?)(?:\s+\(Reason:\s*(.+?)\))?$/,
+			);
 			if (optionMatch && currentQuestion) {
 				if (!currentQuestion.options) {
 					currentQuestion.options = [];
 				}
-				currentQuestion.options.push(trimmed);
+				currentQuestion.options.push({
+					letter: optionMatch[1] || "",
+					text: optionMatch[2] || "",
+					...(optionMatch[3] ? { reason: optionMatch[3] } : {}),
+				});
 			}
 		}
 
@@ -515,14 +559,13 @@ Please analyze this feature and generate clarifying questions if needed.`;
 
 			if (q.options && q.options.length > 0) {
 				for (const opt of q.options) {
-					console.log(TerminalFormatter.option(opt));
+					const isRecommended = q.recommendedOption === opt.letter;
+					console.log(
+						`   ${opt.letter}. ${opt.text}${
+							opt.reason ? ` ${pc.dim(`(Reason: ${opt.reason})`)}` : ""
+						}${isRecommended ? ` ${pc.green(pc.bold("← Recommended"))}` : ""}`,
+					);
 				}
-			}
-
-			if (q.type === "multiple-choice") {
-				console.log(pc.dim(`   Type: Multiple Choice`));
-			} else {
-				console.log(pc.dim(`   Type: Open-ended`));
 			}
 		}
 
@@ -674,5 +717,58 @@ ${summary || "<!-- Overview of the feature -->"}
 ## 9. Open Questions
 <!-- Unresolved questions -->
 `;
+	}
+
+	private async promptUser(question: string): Promise<string> {
+		const rl = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout,
+		});
+
+		return new Promise<string>((resolve) => {
+			rl.question(pc.green("? ") + pc.bold(question), (ans) => {
+				rl.close();
+				resolve(ans.trim());
+			});
+		});
+	}
+
+	private async refinePRD(
+		currentContent: string,
+		feedback: string,
+		paths: ReturnType<ConfigLoader["getPaths"]>,
+	): Promise<string> {
+		const systemPrompt = this.buildSystemPromptForPRD(paths);
+		const userPrompt = `Existing PRD Content:
+${currentContent}
+
+User Feedback / Change Request:
+${feedback}
+
+INSTRUCTIONS:
+1. Update the PRD based on the user's feedback.
+2. Keep the existing structure and sections.
+3. Improve clarity and detail where needed.
+4. Return the COMPLETE updated PRD markdown.`;
+
+		const messages = [
+			{ role: "system" as const, content: systemPrompt },
+			{ role: "user" as const, content: userPrompt },
+		];
+
+		const stream = this.generateStream(messages, {
+			maxTokens: 4000,
+			temperature: 0.7,
+		});
+
+		const display = new StreamDisplay("Updating PRD");
+		let content = "";
+		for await (const chunk of stream) {
+			display.handleChunk(chunk);
+			content += chunk;
+		}
+		display.finish();
+
+		return content || currentContent;
 	}
 }

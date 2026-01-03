@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+/* Support system preference */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #111827;
+    color: #f3f4f6;
+  }
+}
+
+/* Support manual toggle (class strategy) */
+:is(.dark body) {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
