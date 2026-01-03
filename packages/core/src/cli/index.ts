@@ -429,16 +429,25 @@ export async function runCLI() {
 			"[prd-file]",
 			"PRD filename (optional - shows selection if not provided)",
 		)
-		.action(async (prdFile?: string) => {
-			try {
-				const cmd = new TasksGenerateCommand(context);
-				const result = await cmd.execute(prdFile);
-				console.log(formatSuccess(result));
-				process.exit(0);
-			} catch (error) {
-				handleError(error);
-			}
-		});
+		.option(
+			"--max-features <number>",
+			"Maximum number of features to generate (default: all, recommended: 5-10 for large PRDs)",
+		)
+		.action(
+			async (
+				prdFile: string | undefined,
+				options: { maxFeatures?: string },
+			) => {
+				try {
+					const cmd = new TasksGenerateCommand(context);
+					const result = await cmd.execute(prdFile, options);
+					console.log(formatSuccess(result));
+					process.exit(0);
+				} catch (error) {
+					handleError(error);
+				}
+			},
+		);
 
 	tasksCommand
 		.command("add")
@@ -598,12 +607,25 @@ export async function runCLI() {
 	program
 		.command("ui")
 		.description("Start the Taskflow UI dashboard")
+		.argument("[path]", "Path to the project (defaults to current directory)")
 		.option("--stop", "Stop the running UI server")
 		.option("--status", "Check if UI server is running")
 		.option("--port <port>", "Port to run on (default: 4500)")
-		.action(async (options) => {
+		.action(async (projectPath: string | undefined, options) => {
 			try {
-				const cmd = new UiCommand(context);
+				const path = await import("node:path");
+				// Resolve project root if path is provided
+				const resolvedProjectRoot = projectPath 
+					? path.resolve(process.cwd(), projectPath) 
+					: context.projectRoot;
+
+				// Create a new context with the resolved project root
+				const cmdContext: CommandContext = {
+					...context,
+					projectRoot: resolvedProjectRoot
+				};
+
+				const cmd = new UiCommand(cmdContext);
 				const result = await cmd.execute(options);
 				console.log(formatSuccess(result));
 				// Don't exit if running server (execute returns pending promise)

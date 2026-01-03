@@ -16,6 +16,7 @@
 			"test": "vitest run"
 		}
 	},
+	"debug": false,
 	"ai": {
 		"enabled": true,
 		"models": {

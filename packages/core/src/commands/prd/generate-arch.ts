@@ -15,7 +15,7 @@ import {
 	type TechStack,
 	TechStackDetector,
 } from "../../lib/tech-stack-detector.js";
-import { TechStackGenerator } from "../../lib/tech-stack-generator.js";
+
 import {
 	type TechStackOption,
 	TechStackSuggester,
@@ -117,7 +117,7 @@ export class PrdGenerateArchCommand extends BaseCommand {
 		}
 
 		// STEP 1: Detect existing tech stack
-		console.log(TerminalFormatter.header("TECH STACK DETECTION"));
+		console.log(TerminalFormatter.header("EXISTING TECH STACK"));
 		const progress = new ProgressIndicator();
 		progress.start("Scanning codebase for existing technologies...");
 
@@ -187,11 +187,17 @@ export class PrdGenerateArchCommand extends BaseCommand {
 					instructions,
 				);
 			}
+		} else {
+			console.log(
+				TerminalFormatter.info(
+					"No existing tech stack detected (Greenfield project).",
+				),
+			);
 		}
 
 		// STEP 2: Suggest tech stack options (greenfield or user rejected detected)
 		console.log("");
-		console.log(TerminalFormatter.header("TECH STACK SELECTION"));
+		console.log(TerminalFormatter.header("SUGGESTED TECH STACK"));
 		progress.start("Analyzing PRD to suggest appropriate tech stacks...");
 
 		if (!this.llmProvider) {
@@ -272,11 +278,18 @@ export class PrdGenerateArchCommand extends BaseCommand {
 
 		// Get user choice
 		const selected = await this.promptChoice(
-			`Select tech stack [1-${options.length}]:`,
+			`Select tech stack [1-${options.length}] or 'c' for custom:`,
 			options.length,
 		);
 
-		const selectedOption = options[selected - 1];
+		let selectedOption: TechStackOption | undefined;
+
+		if (selected === -1) {
+			// Custom option
+			selectedOption = await this.promptCustomStack();
+		} else {
+			selectedOption = options[selected - 1];
+		}
 
 		if (!selectedOption) {
 			return this.failure(
@@ -312,15 +325,126 @@ export class PrdGenerateArchCommand extends BaseCommand {
 			});
 		});
 
+		if (answer.toLowerCase() === "c" || answer.toLowerCase() === "custom") {
+			return -1;
+		}
+
 		const choice = parseInt(answer, 10);
 		if (Number.isNaN(choice) || choice < 1 || choice > maxChoice) {
 			console.log(
-				TerminalFormatter.error(`Invalid choice. Please select 1-${maxChoice}`),
+				TerminalFormatter.error(
+					`Invalid choice. Please select 1-${maxChoice} or 'c' for custom`,
+				),
 			);
 			return this.promptChoice(question, maxChoice);
 		}
 
 		return choice;
+	}
+
+	private async promptCustomStack(): Promise<TechStackOption> {
+		const rl = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout,
+		});
+
+		const ask = (q: string): Promise<string> => {
+			return new Promise((resolve) => {
+				rl.question(`${pc.cyan(q)} `, (ans) => {
+					resolve(ans.trim());
+				});
+			});
+		};
+
+		console.log(TerminalFormatter.section("CUSTOM TECH STACK"));
+		console.log(
+			TerminalFormatter.info(
+				"Describe your desired tech stack in natural language.",
+			),
+		);
+		console.log(
+			pc.dim(
+				"Example: Vanilla HTML/CSS/JS with no build tools, or Python Flask + React",
+			),
+		);
+
+		const description = await ask("Enter your preferred stack:");
+		rl.close();
+
+		if (!description) {
+			console.log(TerminalFormatter.warning("No description provided."));
+			return this.promptCustomStack();
+		}
+
+		// Use LLM to structure the custom stack
+		const progress = new ProgressIndicator();
+		progress.start("Structuring custom tech stack...");
+
+		if (!this.llmProvider) {
+			throw new LLMRequiredError("LLM provider not available");
+		}
+
+		const systemPrompt = `You are a technical architect. Convert the user's tech stack description into a structured JSON format.
+
+Output ONLY valid JSON matching this interface:
+interface TechStackOption {
+	id: string; // "custom"
+	name: string; // Short name e.g. "Vanilla JS"
+	description: string;
+	technologies: {
+		frontend?: { name: string; package?: string; version?: string }[];
+		backend?: { name: string; package?: string; version?: string }[];
+		database?: { name: string; package?: string; version?: string }[];
+		devops?: { name: string; package?: string; version?: string }[];
+	};
+	pros: string[];
+	cons: string[];
+	bestFor: string[];
+	recommended: boolean; // always true for custom
+}
+`;
+
+		const userPrompt = `Create a structured tech stack option for this description: "${description}"`;
+
+		const response = await this.llmProvider.generate(
+			[
+				{ role: "system", content: systemPrompt },
+				{ role: "user", content: userPrompt },
+			],
+			{
+				temperature: 0.1,
+			},
+		);
+
+		progress.stop();
+
+		try {
+			let jsonContent = response.content.trim();
+			if (jsonContent.startsWith("```")) {
+				jsonContent = jsonContent
+					.replace(/```json\n?/g, "")
+					.replace(/```\n?/g, "");
+			}
+			const parsed = JSON.parse(jsonContent);
+			parsed.id = "custom";
+			parsed.recommended = true;
+			return parsed as TechStackOption;
+		} catch (error) {
+			console.error("Failed to parse custom stack", error);
+			// Fallback to simple object
+			return {
+				id: "custom",
+				name: "Custom Stack",
+				description: description,
+				technologies: {
+					frontend: [{ name: description }],
+				},
+				pros: ["User selected"],
+				cons: [],
+				bestFor: ["Custom requirements"],
+				recommended: true,
+			};
+		}
 	}
 
 	private async generateArchitectureFiles(
@@ -334,32 +458,14 @@ export class PrdGenerateArchCommand extends BaseCommand {
 			throw new LLMRequiredError("LLM provider not available");
 		}
 
-		// Generate tech-stack.md
+		// Generate tech-stack.md using streaming capture
 		console.log(
 			`\n${TerminalFormatter.section("GENERATING TECH STACK DOCUMENTATION")}`,
 		);
 
-		const techStackGenerator = new TechStackGenerator(
-			this.llmProvider,
-			this.aiLogger,
-		);
-
-		const progress = new ProgressIndicator();
-		progress.start("Generating tech stack documentation...");
-
-		const techStackContent = await techStackGenerator.generate(
-			selectedOption,
+		const techStackContent = await this.generateTechStackWithLLM(
 			prdContent,
-		);
-		progress.stop();
-
-		const techStackPath = path.join(paths.refDir, "tech-stack.md");
-		fs.writeFileSync(techStackPath, techStackContent, "utf-8");
-
-		console.log(
-			TerminalFormatter.success(
-				`Generated tech-stack.md (${techStackContent.split("\n").length} lines)`,
-			),
+			selectedOption,
 		);
 
 		// Now generate the other files with tech stack context
@@ -388,6 +494,130 @@ export class PrdGenerateArchCommand extends BaseCommand {
 			},
 			"Architecture Generation",
 		);
+	}
+
+	/**
+	 * Generate tech stack using LLM with streaming capture
+	 */
+	private async generateTechStackWithLLM(
+		prdContent: string,
+		selectedOption: TechStackOption,
+	): Promise<string> {
+		if (!this.llmProvider) {
+			throw new LLMRequiredError("LLM provider not available");
+		}
+
+		const progress = new ProgressIndicator();
+		progress.start("Generating tech-stack.md...");
+
+		const systemPrompt = `You are a technical documentation specialist.
+
+Generate a concise tech-stack.md file (MAX 125 lines) that documents:
+1. All technologies in the stack (with versions)
+2. Key architectural decisions
+3. Rationale for each choice (tied to PRD requirements)
+4. Compatibility Matrix & Constraints
+5. References to official docs
+
+Format:
+# Tech Stack Summary
+
+**Project**: [Project name]
+**Created**: [Date]
+**Last Validated**: [Date]
+
+## Frontend
+- **Framework**: [Name + version]
+- **UI**: [Libraries]
+...
+
+## Compatibility Matrix
+
+| Package | Version | Peer Dependencies | Status |
+|---------|---------|-------------------|--------|
+| next | 14.1.0 | react: ^18.2.0 or ^19.0.0 | ✅ |
+
+## Version Constraints
+### Critical Exact Matches
+- React + React DOM: 18.2.0 = 18.2.0 ✅
+
+## Key Decisions
+
+### 1. [Decision]
+**Decision**: [What]
+**Reason**: [Why - tied to PRD requirement]
+**Trade-off**: [Cons]
+
+## References
+- [Official docs links]
+
+CRITICAL: Keep under 125 lines, be specific, no fluff.`;
+
+		const userPrompt = `Generate tech-stack.md for:
+
+SELECTED STACK:
+${JSON.stringify(selectedOption, null, 2)}
+
+PRD:
+${prdContent}
+
+Include:
+- Specific versions
+- Compatibility Matrix (explicit version constraints)
+- WHY each tech was chosen (link to PRD requirements)
+- Trade-offs made (including any warnings in 'cons')
+- Key dependencies list`;
+
+		const messages = [
+			{ role: "system" as const, content: systemPrompt },
+			{ role: "user" as const, content: userPrompt },
+		];
+
+		const options = {
+			maxTokens: 8192,
+			temperature: 0.3,
+		};
+
+		const stream = this.generateStream(messages, options);
+		const display = new StreamDisplay("Generating Tech Stack");
+		let content = "";
+		let isFirstChunk = true;
+
+		while (true) {
+			const result = await stream.next();
+			if (result.done) {
+				// The return value is in result.value when done is true
+				content = result.value || "";
+				break;
+			}
+			const chunk = result.value;
+			if (isFirstChunk) {
+				progress.stop();
+				isFirstChunk = false;
+			}
+			display.handleChunk(chunk);
+		}
+
+		display.finish();
+
+		if (!content) {
+			throw new Error("Failed to generate tech stack");
+		}
+
+		// Strip markdown delimiters if present
+		content = content.replace(/```markdown\n?/g, "").replace(/```\n?/g, "");
+
+		// Check length warning
+		const lineCount = content.split("\n").length;
+		if (lineCount > 125) {
+			console.warn(
+				TerminalFormatter.warning(
+					`tech-stack.md is ${lineCount} lines (limit: 125). Consider simplifying.`,
+				),
+			);
+		}
+
+		return content;
 	}
 
 	private async confirm(
@@ -696,16 +926,34 @@ export class PrdGenerateArchCommand extends BaseCommand {
 			instructions,
 		);
 
+		// Strip markdown delimiters from content
+		const cleanTechStackContent = techStackContent.replace(
+			/```markdown\n?/g,
+			"",
+		).replace(/```\n?/g, "");
+		const cleanCodingStandardsContent = codingStandardsContent.replace(
+			/```markdown\n?/g,
+			"",
+		).replace(/```\n?/g, "");
+		const cleanArchitectureRulesContent = architectureRulesContent.replace(
+			/```markdown\n?/g,
+			"",
+		).replace(/```\n?/g, "");
+
 		// Write files
-		fs.writeFileSync(codingStandardsPath, codingStandardsContent, "utf-8");
-		fs.writeFileSync(architectureRulesPath, architectureRulesContent, "utf-8");
+		const techStackPath = getRefFilePath(refDir, "tech-stack.md");
+		fs.writeFileSync(techStackPath, cleanTechStackContent, "utf-8");
+		fs.writeFileSync(codingStandardsPath, cleanCodingStandardsContent, "utf-8");
+		fs.writeFileSync(architectureRulesPath, cleanArchitectureRulesContent, "utf-8");
 
 		return this.success(
 			[
+				TerminalFormatter.success(`Generated tech-stack.md`),
 				TerminalFormatter.success(`Generated coding-standards.md`),
 				TerminalFormatter.success(`Generated architecture-rules.md`),
 				"",
 				TerminalFormatter.section("FILES CREATED"),
+				TerminalFormatter.listItem(techStackPath),
 				TerminalFormatter.listItem(codingStandardsPath),
 				TerminalFormatter.listItem(architectureRulesPath),
 			].join("\n"),
@@ -799,7 +1047,7 @@ Create a detailed but CONCISE coding-standards.md file with all required section
 		];
 
 		const options = {
-			maxTokens: 2000,
+			maxTokens: 8192,
 			temperature: 0.3,
 		};
 
@@ -808,14 +1056,21 @@ Create a detailed but CONCISE coding-standards.md file with all required section
 		let content = "";
 		let isFirstChunk = true;
 
-		for await (const chunk of stream) {
+		while (true) {
+			const result = await stream.next();
+			if (result.done) {
+				// The return value is in result.value when done is true
+				content = result.value || "";
+				break;
+			}
+			const chunk = result.value;
 			if (isFirstChunk) {
 				progress.stop();
 				isFirstChunk = false;
 			}
 			display.handleChunk(chunk);
-			content += chunk;
 		}
+
 		display.finish();
 
 		if (!content) {
@@ -903,7 +1158,7 @@ Output ONLY markdown content.`;
 		];
 
 		const options = {
-			maxTokens: 2000,
+			maxTokens: 8192,
 			temperature: 0.3,
 		};
 
@@ -912,14 +1167,21 @@ Output ONLY markdown content.`;
 		let content = "";
 		let isFirstChunk = true;
 
-		for await (const chunk of stream) {
+		while (true) {
+			const result = await stream.next();
+			if (result.done) {
+				// The return value is in result.value when done is true
+				content = result.value || "";
+				break;
+			}
+			const chunk = result.value;
 			if (isFirstChunk) {
 				progress.stop();
 				isFirstChunk = false;
 			}
 			display.handleChunk(chunk);
-			content += chunk;
 		}
+
 		display.finish();
 
 		if (!content) {

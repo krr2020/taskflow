@@ -70,6 +70,7 @@ export const TaskSkillSchema = z.enum([
 	"docs",
 	"development",
 	"mobile",
+	"ai",
 ]);
 export type TaskSkill = z.infer<typeof TaskSkillSchema>;
 
@@ -216,6 +217,7 @@ export const TaskflowConfigSchema = z.object({
 			commands: z.record(z.string(), z.string()).optional(),
 		})
 		.optional(),
+	debug: z.boolean().default(false).optional(),
 	ai: z
 		.object({
 			enabled: z.boolean().default(false),

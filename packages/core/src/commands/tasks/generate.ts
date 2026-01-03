@@ -27,7 +27,10 @@ import { BaseCommand, type CommandResult } from "../base.js";
 export class TasksGenerateCommand extends BaseCommand {
 	protected override requiresLLM = true;
 
-	async execute(prdFile?: string): Promise<CommandResult> {
+	async execute(
+		prdFile?: string,
+		options?: { maxFeatures?: string },
+	): Promise<CommandResult> {
 		// Validate LLM availability if not in MCP mode
 		this.validateLLM("tasks:generate");
 
@@ -205,6 +208,9 @@ export class TasksGenerateCommand extends BaseCommand {
 						paths.tasksDir,
 						paths.refDir,
 						config.project?.name || "project",
+						options?.maxFeatures
+							? parseInt(options.maxFeatures, 10)
+							: undefined,
 					);
 				},
 				() => {
@@ -553,12 +559,49 @@ export class TasksGenerateCommand extends BaseCommand {
 		tasksDir: string,
 		refDir: string,
 		projectName: string,
+		maxFeatures?: number,
 	): Promise<CommandResult> {
 		if (!this.llmProvider) {
 			throw new LLMRequiredError("LLM provider not available");
 		}
 
+		console.log(pc.cyan("📋 Starting task generation..."));
+		console.log(pc.dim(`   PRD: ${prdFile}`));
+
+		// Load existing tasks to support continuation
+		console.log(pc.dim("   Checking for existing tasks..."));
+		const progressFilePath = path.join(tasksDir, "tasks-progress.json");
+		let existingFeatures: any[] = [];
+		let existingFeaturesSummary = "";
+
+		if (fs.existsSync(progressFilePath)) {
+			try {
+				const existingData = JSON.parse(
+					fs.readFileSync(progressFilePath, "utf-8"),
+				);
+				existingFeatures = existingData.features || [];
+
+				if (existingFeatures.length > 0) {
+					existingFeaturesSummary = "\n\n=== EXISTING FEATURES (ALREADY GENERATED) ===\n";
+					existingFeatures.forEach((f: any) => {
+						existingFeaturesSummary += `\nFeature ${f.id}: ${f.title} (${f.status})\n`;
+						if (f.stories) {
+							f.stories.forEach((s: any) => {
+								existingFeaturesSummary += `  Story ${s.id}: ${s.title} (${s.status}) - ${s.tasks?.length || 0} tasks\n`;
+							});
+						}
+					});
+					console.log(
+						pc.dim(`   Found ${existingFeatures.length} existing feature(s)`),
+					);
+				}
+			} catch (e) {
+				console.log(pc.dim("   Could not parse existing tasks, starting fresh"));
+			}
+		}
+
 		// Load context files
+		console.log(pc.dim("   Loading context files..."));
 		const contextFiles: { name: string; content: string }[] = [];
 
 		// Load task-generator.md
@@ -603,12 +646,33 @@ export class TasksGenerateCommand extends BaseCommand {
 			});
 		}
 
+		// Add feature limit constraint if specified
+		let featureLimitMessage = "";
+		if (maxFeatures && maxFeatures > 0) {
+			featureLimitMessage = `\n\nIMPORTANT: Limit your output to maximum ${maxFeatures} feature(s). Focus on the most critical and high-priority features first. You can generate tasks for remaining features later using the same PRD.`;
+			console.log(pc.dim(`   Limit: Maximum ${maxFeatures} feature(s)`));
+		}
+
+		// If existing features exist, inform the LLM
+		if (existingFeatures.length > 0) {
+			if (maxFeatures && maxFeatures > 0) {
+				featureLimitMessage += `\n\n${existingFeaturesSummary}\n\nGENERATION CONTINUATION: You are continuing from existing features above. Generate NEW features that are NOT in the list above. Use the NEXT sequential feature IDs starting from ${existingFeatures.length + 1}.`;
+			} else {
+				featureLimitMessage = `${existingFeaturesSummary}\n\nIMPORTANT: Do NOT regenerate any features from the list above. Only generate NEW features.`;
+			}
+		}
+
+		console.log(pc.dim("   Analyzing PRD and generating task breakdown..."));
+
 		// Generate tasks JSON
 		const tasksData = await this.generateTasksJSON(
 			prdContent,
 			contextFiles,
 			projectName,
+			featureLimitMessage,
 		);
+
+		console.log(pc.dim("   Creating task file structure..."));
 
 		// Create task structure
 		await this.createTaskStructure(tasksDir, tasksData);
@@ -651,21 +715,39 @@ export class TasksGenerateCommand extends BaseCommand {
 		// Write tasks progress
 		await this.writeTasksProgress(tasksDir, tasksData);
 
+		// Reload the final progress to get merged data
+		const finalProgress: TasksProgress = JSON.parse(
+			fs.readFileSync(path.join(tasksDir, "tasks-progress.json"), "utf-8"),
+		);
+
 		// Save project index (required for loading progress)
-		saveProjectIndex(tasksDir, tasksProgress);
+		saveProjectIndex(tasksDir, finalProgress);
+
+		console.log(pc.green("✓ Task generation completed successfully!"));
+
+		const totalFeatures = finalProgress.features.length;
+		const newFeatures = tasksData.features.length;
+		const isNewRun = newFeatures === totalFeatures;
 
 		return this.success(
 			[
-				TerminalFormatter.success(`Generated task breakdown from ${prdFile}`),
+				TerminalFormatter.success(
+					`${isNewRun ? "Generated" : "Generated additional"} task breakdown from ${prdFile}`,
+				),
 				"",
 				TerminalFormatter.section("TASK HIERARCHY"),
-				pc.white(`  Features: ${tasksData.features.length}`),
+				pc.white(`  Total Features: ${totalFeatures}`),
+				pc.white(`  Stories: ${finalProgress.features.reduce((sum, f) => sum + (f.stories?.length || 0), 0)}`),
 				pc.white(
-					`  Stories: ${tasksData.features.reduce((sum, f) => sum + f.stories.length, 0)}`,
+					`  Tasks: ${finalProgress.features.reduce((sum, f) => sum + (f.stories?.reduce((s: number, st: any) => s + (st.tasks?.length || 0), 0) || 0), 0)}`,
 				),
-				pc.white(
-					`  Tasks: ${tasksData.features.reduce((sum, f) => sum + f.stories.reduce((s, st) => s + st.tasks.length, 0), 0)}`,
-				),
+				!isNewRun
+					? [
+							"",
+							TerminalFormatter.section("THIS SESSION"),
+							pc.white(`  New Features: ${newFeatures}`),
+						].join("\n")
+					: "",
 				"",
 				TerminalFormatter.section("FILES CREATED"),
 				pc.cyan(`  - ${path.join(tasksDir, "tasks-progress.json")}`),
@@ -693,6 +775,7 @@ export class TasksGenerateCommand extends BaseCommand {
 		prdContent: string,
 		contextFiles: Array<{ name: string; content: string }>,
 		projectName: string,
+		featureLimitMessage?: string,
 	): Promise<TasksProgressWithDetails> {
 		const llmProvider = this.llmProvider;
 		if (!llmProvider) {
@@ -813,7 +896,8 @@ IMPORTANT:
 - Keep tasks MEANINGFUL (30-90 minutes each)
 - AVOID micro-tasks (combine related steps)
 - Include clear acceptance criteria for each task
-- Set appropriate dependencies between tasks`;
+- Set appropriate dependencies between tasks
+${featureLimitMessage}`;
 
 		const messages = [
 			{ role: "system" as const, content: systemPrompt },
@@ -902,7 +986,7 @@ IMPORTANT:
 		tasksData: TasksProgressWithDetails,
 	): Promise<void> {
 		// Convert to TasksProgress by removing extra fields
-		const tasksProgress: TasksProgress = {
+		const newTasksProgress: TasksProgress = {
 			project: tasksData.project,
 			features: tasksData.features.map((f) => ({
 				...f,
@@ -937,9 +1021,38 @@ IMPORTANT:
 		};
 
 		const progressFilePath = path.join(tasksDir, "tasks-progress.json");
+
+		// Merge with existing tasks if they exist
+		let existingProgress: TasksProgress | null = null;
+		if (fs.existsSync(progressFilePath)) {
+			try {
+				existingProgress = JSON.parse(
+					fs.readFileSync(progressFilePath, "utf-8"),
+				);
+			} catch (e) {
+				console.log(pc.dim("   Could not parse existing tasks, creating new file"));
+			}
+		}
+
+		let finalProgress: TasksProgress;
+
+		if (existingProgress && existingProgress.features.length > 0) {
+			finalProgress = {
+				project: existingProgress.project,
+				features: [...existingProgress.features, ...newTasksProgress.features],
+			};
+			console.log(
+				pc.dim(
+					`   Merged ${newTasksProgress.features.length} new feature(s) with ${existingProgress.features.length} existing feature(s)`,
+				),
+			);
+		} else {
+			finalProgress = newTasksProgress;
+		}
+
 		fs.writeFileSync(
 			progressFilePath,
-			JSON.stringify(tasksProgress, null, 2),
+			JSON.stringify(finalProgress, null, 2),
 			"utf-8",
 		);
 	}

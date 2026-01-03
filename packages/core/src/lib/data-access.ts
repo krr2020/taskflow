@@ -146,7 +146,9 @@ export function getTaskFilePath(
 	const location = findTaskLocation(tasksProgress, taskId);
 	if (!location) {
 		consoleOutput(`Debug: Task location not found for ${taskId}`);
-		return null;
+		// Try recursive search even if location is not found
+		consoleOutput(`Debug: Attempting recursive search for task ${taskId}...`);
+		return findTaskFileRecursively(tasksDir, taskId);
 	}
 
 	const { feature, story, task } = location;
@@ -154,7 +156,9 @@ export function getTaskFilePath(
 
 	if (!exists(featureDir)) {
 		consoleOutput(`Debug: Feature dir not found: ${featureDir}`);
-		return null;
+		// Try recursive search if feature directory doesn't exist
+		consoleOutput(`Debug: Attempting recursive search for task ${taskId}...`);
+		return findTaskFileRecursively(tasksDir, taskId);
 	}
 
 	// Find story directory by ID prefix (handles variable naming)
@@ -165,7 +169,9 @@ export function getTaskFilePath(
 		consoleOutput(
 			`Debug: Story dir not found in ${featureDir} starting with S${story.id}-`,
 		);
-		return null;
+		// Try recursive search if story directory doesn't exist
+		consoleOutput(`Debug: Attempting recursive search for task ${taskId}...`);
+		return findTaskFileRecursively(tasksDir, taskId);
 	}
 
 	const storyDir = path.join(featureDir, dirs[0] as string);
@@ -181,7 +187,7 @@ export function getTaskFilePath(
 	consoleOutput(
 		`Debug: Task file not found in ${storyDir}, trying recursive search...`,
 	);
-	return findTaskFileRecursively(tasksDir, task.id);
+	return findTaskFileRecursively(tasksDir, taskId);
 }
 
 function findTaskFileRecursively(dir: string, taskId: string): string | null {
@@ -208,10 +214,17 @@ export function loadTaskFile(filePath: string): TaskFileContent | null {
 	if (!exists(filePath)) return null;
 
 	try {
-		const data = readJson(filePath);
-		if (!data) return null;
-		return validateTaskFileContent(data);
-	} catch {
+		const data = readJson(filePath) as any;
+    if (!data) return null;
+    
+    // Debug logging to inspect actual data before validation
+    if (data.subtasks) {
+      consoleOutput(`Debug subtasks for ${path.basename(filePath)}: ${JSON.stringify(data.subtasks)}`, { type: "info" });
+    }
+
+    return validateTaskFileContent(data);
+	} catch (error) {
+		consoleOutput(`Validation error for ${filePath}: ${error instanceof Error ? error.message : String(error)}`, { type: "error" });
 		return null;
 	}
 }

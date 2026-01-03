@@ -4,11 +4,13 @@
  * Creates a conversational interface for gathering PRD information.
  */
 
+import pc from "picocolors";
 import type { BaseCommand } from "../commands/base.js";
 import {
 	InteractiveSession,
 	type SessionConfig,
 } from "./interactive-session.js";
+import { TerminalFormatter } from "./terminal-formatter.js";
 
 export interface PRDSessionData {
 	featureName: string;
@@ -70,9 +72,10 @@ export class PRDInteractiveSession extends InteractiveSession<PRDSessionData> {
 	 * Implement abstract showSummary method
 	 */
 	protected showSummary(): void {
-		console.log("\nHere's what I've gathered:\n");
-		console.log(`Title: ${this.data.title}`);
-		console.log(`\nSummary:`);
+		console.log(TerminalFormatter.section("SUMMARY"));
+		console.log(pc.bold("Title:"));
+		console.log(this.data.title);
+		console.log(pc.bold("\nSummary:"));
 		console.log(this.data.summary);
 	}
 
@@ -103,7 +106,7 @@ export class PRDInteractiveSession extends InteractiveSession<PRDSessionData> {
 
 		// Validate required field
 		if (!title || title.trim().length === 0) {
-			console.log("Title is required.");
+			console.log(TerminalFormatter.warning("Title is required."));
 			return this.askTitle();
 		}
 
@@ -119,7 +122,7 @@ export class PRDInteractiveSession extends InteractiveSession<PRDSessionData> {
 		this.showStep("FEATURE SUMMARY");
 
 		if (this.data.summary) {
-			console.log("Current summary:");
+			console.log(pc.bold("Current summary:"));
 			console.log(this.data.summary);
 			const keep = await this.confirm("Keep this summary?", "yes");
 			if (keep) return;

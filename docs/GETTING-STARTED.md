@@ -137,13 +137,55 @@ Save the file when done.
 
 ---
 
-## Step 4: Generate Tasks from the PRD
+## Step 4: Generate Architecture (Tech Stack & Coding Standards)
 
-Taskflow can auto-generate a task breakdown from your PRD (requires AI configuration, see below) or you can create tasks manually.
+Before generating tasks, you need to define the technical foundation for your project. This step generates two critical files:
+
+- **coding-standards.md**: Defines coding conventions, patterns, and best practices
+- **architecture-rules.md**: Defines architectural principles, constraints, and design decisions
+
+These files are essential because task generation uses them to create tasks that align with your project's tech stack and standards.
 
 ### With AI (Recommended)
 
 First, configure an AI provider:
+
+```bash
+# Set your API key
+export ANTHROPIC_API_KEY=your-key-here
+
+# Configure Taskflow
+taskflow configure ai --provider anthropic --model claude-3-5-sonnet-20241022
+```
+
+Then generate the architecture:
+
+```bash
+taskflow prd generate-arch tasks/prds/YYYY-MM-DD-user-authentication.md
+```
+
+This creates:
+```
+.taskflow/ref/
+├── coding-standards.md    # Your project's coding conventions
+└── architecture-rules.md  # Your architectural principles
+```
+
+The AI analyzes your PRD and generates appropriate tech stack choices and coding standards based on modern best practices.
+
+### Without AI
+
+You can manually create these files following the templates in `.taskflow/ref/`. See [Configuration Guide](./CONFIG.md) for details on what to include.
+
+---
+
+## Step 5: Generate Tasks from the PRD
+
+Taskflow can auto-generate a task breakdown from your PRD. The task generation uses the architecture files (coding-standards.md and architecture-rules.md) to create tasks that fit your tech stack and follow your standards.
+
+### With AI (Recommended)
+
+If you haven't configured AI yet, do so:
 
 ```bash
 # Set your API key
@@ -178,7 +220,7 @@ You can manually create task files following the JSON schema. See [Architecture]
 
 ---
 
-## Step 5: View Your Tasks
+## Step 6: View Your Tasks
  
  Check the status of your project using the CLI or the Dashboard.
  
@@ -213,7 +255,7 @@ Features:
 
 ---
 
-## Step 6: Start Your First Task
+## Step 7: Start Your First Task
 
 Begin working on the first task:
 
@@ -239,7 +281,7 @@ Run: taskflow do
 
 ---
 
-## Step 7: Follow the Task Workflow
+## Step 8: Follow the Task Workflow
 
 Taskflow guides you through each state of the task:
 
@@ -273,7 +315,7 @@ If validations fail, you'll see the errors and can fix them before running `task
 
 ---
 
-## Step 8: Commit Your Work
+## Step 9: Commit Your Work
 
 Once all validations pass, you'll be in the **committing** state:
 
@@ -312,9 +354,9 @@ Run: taskflow start 1.1.1
 
 ---
 
-## Step 9: Continue with Remaining Tasks
+## Step 10: Continue with Remaining Tasks
 
-Repeat steps 6-8 for each task:
+Repeat steps 7-9 for each task:
 
 ```bash
 taskflow start 1.1.1
@@ -327,7 +369,7 @@ taskflow commit "- Implemented bcrypt password hashing
 
 ---
 
-## Step 10: Monitor Progress
+## Step 11: Monitor Progress
 
 At any time, check your progress:
 

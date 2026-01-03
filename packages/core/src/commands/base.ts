@@ -8,6 +8,7 @@ import path from "node:path";
 import pc from "picocolors";
 import { AICallLogger } from "../lib/ai-call-logger.js";
 import { ConfigLoader } from "../lib/config-loader.js";
+import { VALIDATION_LIMITS } from "../lib/constants.js";
 import { LLMRequiredError } from "../lib/errors.js";
 import type { MCPContext } from "../lib/mcp-detector.js";
 import { UsageDisplay } from "../lib/usage-display.js";
@@ -64,7 +65,8 @@ export abstract class BaseCommand {
 			checkpointDir: `${context.projectRoot}/.taskflow/checkpoints`,
 		});
 
-		const debugEnabled = process.env.TASKFLOW_DEBUG === "true";
+		const config = this.configLoader.exists() ? this.configLoader.load() : null;
+		const debugEnabled = config?.debug ?? process.env.TASKFLOW_DEBUG === "true";
 		this.aiLogger = new AICallLogger(context.projectRoot, debugEnabled);
 
 		this.initializeLLMProvider();
@@ -189,6 +191,7 @@ For more info: https://github.com/krr2020/taskflow
 		}
 
 		const startTime = Date.now();
+		const timeoutMs = VALIDATION_LIMITS.LLM_GENERATION_TIMEOUT;
 
 		try {
 			// Check cache first
@@ -198,17 +201,30 @@ For more info: https://github.com/krr2020/taskflow
 				return cached.content;
 			}
 
-			// Call provider stream
-			const generator = this.llmProvider.generateStream(messages, options);
+			// Call provider stream with timeout
+			const generator = Promise.race([
+				Promise.resolve(this.llmProvider.generateStream(messages, options)),
+				new Promise<never>((_, reject) =>
+					setTimeout(() => {
+						reject(
+							new Error(
+								`LLM generation timeout after ${timeoutMs / 1000}s. This may indicate a network issue or the LLM is taking longer than expected.`,
+							),
+						);
+					}, timeoutMs),
+				),
+			]);
+
 			let fullContent = "";
 
 			// Iterate through stream and capture return value
-			let next = await generator.next();
+			const stream = await generator;
+			let next = await stream.next();
 			while (!next.done) {
 				const chunk = next.value;
 				fullContent += chunk;
 				yield chunk;
-				next = await generator.next();
+				next = await stream.next();
 			}
 
 			// Process result (cost tracking and caching)

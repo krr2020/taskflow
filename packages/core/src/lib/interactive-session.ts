@@ -7,6 +7,7 @@
  */
 
 import readline from "node:readline";
+import pc from "picocolors";
 import type { BaseCommand } from "../commands/base.js";
 import { SessionManager } from "./session-manager.js";
 import { TerminalFormatter } from "./terminal-formatter.js";
@@ -157,20 +158,21 @@ export abstract class InteractiveSession<T = unknown> {
 	 * Show session header
 	 */
 	protected showHeader(): void {
-		const width = 60;
-		console.log(`\n${"═".repeat(width)}`);
-		console.log(`  ${this.config.title}`);
-		console.log("═".repeat(width));
+		console.log(TerminalFormatter.header(this.config.title));
 
 		if (this.config.description) {
-			console.log(`\n${this.config.description}\n`);
+			console.log(`${this.config.description}\n`);
 		}
 
-		console.log("Instructions:");
-		console.log("  • Answer each question");
-		console.log("  • Press Enter to skip (where applicable)");
+		console.log(pc.bold("Instructions:"));
+		console.log(TerminalFormatter.listItem("Answer each question"));
+		console.log(
+			TerminalFormatter.listItem("Press Enter to skip (where applicable)"),
+		);
 		if (this.config.allowQuit) {
-			console.log("  • Type 'quit' or 'exit' to cancel");
+			console.log(
+				TerminalFormatter.listItem("Type 'quit' or 'exit' to cancel"),
+			);
 		}
 		console.log("");
 	}
@@ -181,13 +183,11 @@ export abstract class InteractiveSession<T = unknown> {
 	protected showStep(title: string): void {
 		if (this.config.showSteps) {
 			this.step++;
-			console.log(`\n[${this.step}] ${"─".repeat(40)}`);
-			console.log(`  ${title.toUpperCase()}`);
-			console.log("─".repeat(40));
+			console.log(
+				TerminalFormatter.section(`Step ${this.step}: ${title.toUpperCase()}`),
+			);
 		} else {
-			console.log(`\n${"─".repeat(40)}`);
-			console.log(`  ${title.toUpperCase()}`);
-			console.log("─".repeat(40));
+			console.log(TerminalFormatter.section(title.toUpperCase()));
 		}
 	}
 
@@ -202,8 +202,8 @@ export abstract class InteractiveSession<T = unknown> {
 		const rl = this.createReadline();
 
 		const promptText = defaultVal
-			? `${question} [${defaultVal}]: `
-			: `${question}\n> `;
+			? `${pc.bold(question)} ${pc.dim(`[${defaultVal}]`)}: `
+			: `${pc.bold(question)}\n${pc.green("> ")}`;
 
 		const answer = await new Promise<string>((resolve) => {
 			rl.question(promptText, (input) => {
@@ -223,7 +223,9 @@ export abstract class InteractiveSession<T = unknown> {
 
 		// Validate required
 		if (required && !value) {
-			console.log("⚠ This field is required. Please try again.");
+			console.log(
+				TerminalFormatter.warning("This field is required. Please try again."),
+			);
 			return this.prompt(question, defaultVal, required);
 		}
 
@@ -246,14 +248,14 @@ export abstract class InteractiveSession<T = unknown> {
 		const lines: string[] = [];
 		let emptyLineCount = 0;
 
-		console.log(question);
+		console.log(pc.bold(question));
 		if (hint) {
-			console.log(`(${hint})`);
+			console.log(pc.dim(`(${hint})`));
 		}
 
 		const askForLine = async (): Promise<void> => {
 			const answer = await new Promise<string>((resolve) => {
-				rl.question("> ", (input) => {
+				rl.question(pc.green("> "), (input) => {
 					resolve(input.trimEnd());
 				});
 			});

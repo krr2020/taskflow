@@ -682,6 +682,72 @@ When validation fails with LLM configured, Taskflow uses `debug-validator.ts`:
 
 ---
 
+## Debugging
+
+Taskflow provides debugging capabilities to help you troubleshoot AI interactions and other issues.
+
+### Debug Mode
+
+Enable debug mode in your configuration to log AI requests and responses:
+
+```json
+{
+  "debug": true
+}
+```
+
+Or use the environment variable:
+
+```bash
+export TASKFLOW_DEBUG=true
+```
+
+When debug mode is enabled, Taskflow logs all AI API calls to:
+```
+.taskflow/logs/ai-calls/YYYY-MM-DD.jsonl
+```
+
+Each log entry includes:
+- `timestamp`: When the call was made
+- `command`: The taskflow command that triggered it
+- `provider`: The AI provider (e.g., "anthropic", "openai")
+- `model`: The model used
+- `prompt.system`: The system prompt
+- `prompt.user`: The user prompt
+- `response.content`: The AI's response
+- `response.usage`: Token usage stats
+- `duration`: How long the call took (in milliseconds)
+- `error`: Error message (if any)
+
+### Viewing Debug Logs
+
+View today's logs:
+
+```bash
+# View raw logs
+cat .taskflow/logs/ai-calls/$(date +%Y-%m-%d).jsonl
+
+# Format with jq
+cat .taskflow/logs/ai-calls/$(date +%Y-%m-%d).jsonl | jq
+
+# View only prompts
+cat .taskflow/logs/ai-calls/$(date +%Y-%m-%d).jsonl | jq -r '.prompt.user'
+
+# View only responses
+cat .taskflow/logs/ai-calls/$(date +%Y-%m-%d).jsonl | jq -r '.response.content'
+```
+
+### Priority
+
+Debug mode can be enabled in three ways (in order of priority):
+1. **Config file**: `"debug": true` in `taskflow.config.json`
+2. **Environment variable**: `TASKFLOW_DEBUG=true`
+3. **Default**: Disabled (false)
+
+If you enable debug mode in the config file, it will take precedence over the environment variable.
+
+---
+
 ## Advanced Options
 
 ### Disabling AI While Keeping Config
