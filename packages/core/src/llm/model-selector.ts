@@ -3,7 +3,7 @@
  * Selects the appropriate model for each phase (planning, execution, analysis)
  */
 
-import { LLMError } from "../lib/core/errors.js";
+import { LLMError } from "@/lib/core/errors";
 import { type LLMProvider, LLMProviderType, Phase } from "./base.js";
 import { AnthropicProvider } from "./providers/anthropic.js";
 import { MockLLMProvider } from "./providers/mock.js";
@@ -16,7 +16,7 @@ export interface ModelSelection {
 	analysis: LLMProvider;
 }
 
-import type { ModelDefinition, ModelUsage } from "../lib/core/types.js";
+import type { ModelDefinition, ModelUsage } from "@/lib/core/types";
 
 export interface AIConfig {
 	enabled: boolean;

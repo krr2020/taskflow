@@ -3,14 +3,14 @@
  * Provides deterministic responses without making actual API calls
  */
 
-import { LLMError } from "../../lib/core/errors.js";
+import { LLMError } from "@/lib/core/errors";
 import {
 	type LLMGenerationOptions,
 	type LLMGenerationResult,
 	type LLMMessage,
 	LLMProvider,
 	LLMProviderType,
-} from "../base.js";
+} from "@/llm/base";
 
 export interface MockResponse {
 	content: string;

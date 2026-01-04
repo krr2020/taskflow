@@ -5,33 +5,33 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { AICallLogger } from "../lib/ai/ai-call-logger.js";
-import { ConfigLoader } from "../lib/config/config-loader.js";
-import { VALIDATION_LIMITS } from "../lib/config/constants.js";
+import { AICallLogger } from "@/lib/ai/ai-call-logger";
+import { ConfigLoader } from "@/lib/config/config-loader";
+import { VALIDATION_LIMITS } from "@/lib/config/constants";
 import {
 	type BuiltPrompt,
 	type ContentBlock,
 	ContentManager,
 	type ContentOptions,
 	PromptBuilder,
-} from "../lib/content/index.js";
-import { LLMRequiredError } from "../lib/core/errors.js";
-import type { MCPContext } from "../lib/mcp/mcp-detector.js";
-import { Text } from "../lib/ui/components.js";
-import { UsageDisplay } from "../lib/utils/usage-display.js";
+} from "@/lib/content/index";
+import { LLMRequiredError } from "@/lib/core/errors";
+import type { MCPContext } from "@/lib/mcp/mcp-detector";
+import { Text } from "@/lib/ui/components";
+import { UsageDisplay } from "@/lib/utils/usage-display";
 import {
 	type LLMGenerationOptions,
 	type LLMGenerationResult,
 	type LLMMessage,
 	type LLMProvider,
 	Phase,
-} from "../llm/base.js";
-import { LLMCache } from "../llm/cache.js";
-import { CheckpointManager } from "../llm/checkpoint-manager.js";
-import { ContextManager } from "../llm/context-manager.js";
-import { CostTracker } from "../llm/cost-tracker.js";
-import { type AIConfig, ProviderFactory } from "../llm/factory.js";
-import { RateLimiter } from "../llm/rate-limiter.js";
+} from "@/llm/base";
+import { LLMCache } from "@/llm/cache";
+import { CheckpointManager } from "@/llm/checkpoint-manager";
+import { ContextManager } from "@/llm/context-manager";
+import { CostTracker } from "@/llm/cost-tracker";
+import { type AIConfig, ProviderFactory } from "@/llm/factory";
+import { RateLimiter } from "@/llm/rate-limiter";
 
 export interface CommandContext {
 	projectRoot: string;

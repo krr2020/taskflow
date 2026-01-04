@@ -2,22 +2,17 @@
  * Status command - Display project/feature/story status
  */
 
-import { ConfigLoader } from "../../lib/config/config-loader.js";
+import { BaseCommand, type CommandResult } from "@/commands/base";
+import { ConfigLoader } from "@/lib/config/config-loader";
 import {
 	calculateProgressStats,
 	findActiveTask,
 	findFeature,
 	findStoryLocation,
 	loadTasksProgress,
-} from "../../lib/core/data-access.js";
-import type {
-	Feature,
-	Story,
-	TaskRef,
-	TasksProgress,
-} from "../../lib/core/types.js";
-import { Colors, Text } from "../../lib/ui/components.js";
-import { BaseCommand, type CommandResult } from "../base.js";
+} from "@/lib/core/data-access";
+import type { Feature, Story, TaskRef, TasksProgress } from "@/lib/core/types";
+import { Colors, Text } from "@/lib/ui/components";
 
 export class StatusCommand extends BaseCommand {
 	async execute(id?: string): Promise<CommandResult> {

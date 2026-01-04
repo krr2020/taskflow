@@ -1,9 +1,9 @@
-import type { LLMProvider } from "../../llm/base.js";
 import type {
 	DiscoveredFeature,
 	Requirement,
 	RequirementMatch,
-} from "../core/types.js";
+} from "@/lib/core/types";
+import type { LLMProvider } from "@/llm/base";
 
 /**
  * Matches PRD requirements against discovered features

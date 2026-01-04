@@ -53,8 +53,6 @@ tasks/
 - **Story:** `N.M` (e.g., `1.1`, `1.2`)
 - **Task:** `N.M.K` (e.g., `1.1.0`, `1.1.1`)
 
-> For complete format specification including templates and conventions, see [task-generation.md](./resources/task-generation.md)
-
 ---
 
 ## 🛠️ Available Tools (21 Total)

@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { ProviderFactory } from "../llm/factory.js";
+import { ProviderFactory } from "@/llm/factory";
 import { BaseCommand, type CommandResult } from "./base.js";
 
 export class ConfigureAICommand extends BaseCommand {

@@ -5,9 +5,9 @@
  * exploring options, and refining ideas.
  */
 
-import type { LLMMessage, LLMProvider } from "../../llm/base.js";
-import { MarkdownDisplay } from "../display/markdown.js";
-import { Separator, Text } from "../ui/components.js";
+import { MarkdownDisplay } from "@/lib/display/markdown";
+import { Separator, Text } from "@/lib/ui/components";
+import type { LLMMessage, LLMProvider } from "@/llm/base";
 import { MultilineInput } from "./multiline.js";
 
 export interface ConversationMessage {

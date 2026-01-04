@@ -3,7 +3,7 @@
  * Factory for creating LLM providers and model selectors
  */
 
-import { LLMError } from "../lib/core/errors.js";
+import { LLMError } from "@/lib/core/errors";
 import {
 	type LLMGenerationOptions,
 	type LLMGenerationResult,

@@ -14,14 +14,18 @@
 		]
 	},
 	"scripts": {
-		"type-check": "tsc --noEmit",
-		"test": "vitest run",
+		"build": "pnpm -r --filter './packages/*' run build",
+		"build:core": "pnpm --filter './packages/core' run build",
+		"build:mcp-server": "pnpm --filter './packages/mcp-server' run build",
+		"build:ui": "pnpm --filter './packages/ui' run build",
+		"type-check": "pnpm -r --filter './packages/*' run type-check",
+		"test": "pnpm -r --filter './packages/*' run test",
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest run --coverage",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
-		"task": "node packages/core/bin/taskflow.js"
+		"lint:unsafe": "biome check --write --unsafe ."
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.10",
@@ -29,7 +33,7 @@
 		"@vitest/coverage-v8": "4.0.16",
 		"@vitest/ui": "4.0.16",
 		"tsx": "4.21.0",
-		"typescript": "5.9.3",
+		"typescript": "5.8.2",
 		"vitest": "4.0.16"
 	}
 }

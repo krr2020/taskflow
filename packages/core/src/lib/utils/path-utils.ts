@@ -11,7 +11,7 @@ import {
 	getFeatureDirName,
 	getStoryDirName,
 	getTaskFileName,
-} from "../config/constants.js";
+} from "@/lib/config/constants";
 
 // ============================================================================
 // Project Directory Paths

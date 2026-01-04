@@ -1,4 +1,4 @@
-import { Separator, Text } from "../ui/components.js";
+import { Separator, Text } from "@/lib/ui/components";
 
 /**
  * Utility to display streaming LLM responses

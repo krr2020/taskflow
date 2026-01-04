@@ -5,26 +5,26 @@
  * conversational mode, and iterative refinement.
  */
 
-import type { LLMProvider } from "../../llm/base.js";
-import { CostTracker } from "../../llm/cost-tracker.js";
 import {
 	type PromptBuilder,
 	TEMPLATE_SOURCES,
 	TemplateLoader,
-} from "../content/index.js";
-import { MarkdownDisplay, ProgressDisplay } from "../display/index.js";
+} from "@/lib/content/index";
+import { MarkdownDisplay, ProgressDisplay } from "@/lib/display/index";
 import {
 	ConversationSession,
 	InteractiveSelect,
 	MultilineInput,
-} from "../input/index.js";
-import { Separator, Text } from "../ui/components.js";
-import { LoadingSpinner } from "../ui/spinner.js";
+} from "@/lib/input/index";
+import { Separator, Text } from "@/lib/ui/components";
+import { LoadingSpinner } from "@/lib/ui/spinner";
 import {
 	type FileReference,
 	FileReferenceParser,
-} from "../utils/file-reference.js";
-import { UsageDisplay } from "../utils/usage-display.js";
+} from "@/lib/utils/file-reference";
+import { UsageDisplay } from "@/lib/utils/usage-display";
+import type { LLMProvider } from "@/llm/base";
+import { CostTracker } from "@/llm/cost-tracker";
 
 export interface PRDQuestion {
 	number: number;

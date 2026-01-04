@@ -4,9 +4,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { TaskflowError } from "../core/errors.js";
-import type { TaskflowConfig } from "../core/types.js";
-import { validateTaskflowConfig } from "../core/types.js";
+import { TaskflowError } from "@/lib/core/errors";
+import type { TaskflowConfig } from "@/lib/core/types";
+import { validateTaskflowConfig } from "@/lib/core/types";
 import { CONFIG_FILE, getProjectPaths } from "./config-paths.js";
 
 export class ConfigLoader {

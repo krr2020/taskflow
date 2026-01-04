@@ -2,12 +2,13 @@
  * Start command - Start working on a task
  */
 
-import { ConfigLoader } from "../../lib/config/config-loader.js";
+import { BaseCommand, type CommandResult } from "@/commands/base";
+import { ConfigLoader } from "@/lib/config/config-loader";
 import {
 	getRefFilePath,
 	getSkillFilePath,
 	REF_FILES,
-} from "../../lib/config/config-paths.js";
+} from "@/lib/config/config-paths";
 import {
 	checkDependenciesMet,
 	findActiveTask,
@@ -18,17 +19,16 @@ import {
 	loadTaskFile,
 	loadTasksProgress,
 	updateTaskStatus,
-} from "../../lib/core/data-access.js";
+} from "@/lib/core/data-access";
 import {
 	ActiveSessionExistsError,
 	DependencyNotMetError,
 	TaskAlreadyCompletedError,
 	TaskNotFoundError,
-} from "../../lib/core/errors.js";
-import { consoleOutput, icons } from "../../lib/core/output.js";
-import { verifyBranch } from "../../lib/git/git.js";
-import { Text } from "../../lib/ui/components.js";
-import { BaseCommand, type CommandResult } from "../base.js";
+} from "@/lib/core/errors";
+import { consoleOutput, icons } from "@/lib/core/output";
+import { verifyBranch } from "@/lib/git/git";
+import { Text } from "@/lib/ui/components";
 
 export class StartCommand extends BaseCommand {
 	async execute(taskIdInput?: string): Promise<CommandResult> {

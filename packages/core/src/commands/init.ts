@@ -4,19 +4,19 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { ConfigLoader } from "../lib/config/config-loader.js";
-import { getProjectPaths, TEMPLATE_FILES } from "../lib/config/config-paths.js";
-import { VERSIONS } from "../lib/config/constants.js";
-import { Text } from "../lib/ui/components.js";
+import { ConfigLoader } from "@/lib/config/config-loader";
+import { getProjectPaths, TEMPLATE_FILES } from "@/lib/config/config-paths";
+import { VERSIONS } from "@/lib/config/constants";
+import { Text } from "@/lib/ui/components";
 import {
 	copyFile,
 	ensureDir,
 	exists,
 	readJson,
 	writeJson,
-} from "../lib/utils/file-utils.js";
-import { ensureAllDirs } from "../lib/utils/path-utils.js";
-import { getTemplateDir } from "../lib/utils/template-utils.js";
+} from "@/lib/utils/file-utils";
+import { ensureAllDirs } from "@/lib/utils/path-utils";
+import { getTemplateDir } from "@/lib/utils/template-utils";
 import { BaseCommand, type CommandResult } from "./base.js";
 
 interface VersionInfo {

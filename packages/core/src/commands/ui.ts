@@ -1,5 +1,5 @@
-import { TaskflowServer } from "../lib/utils/server.js";
-import { UiManager } from "../lib/utils/ui-manager.js";
+import { TaskflowServer } from "@/lib/utils/server";
+import { UiManager } from "@/lib/utils/ui-manager";
 import { BaseCommand, type CommandResult } from "./base.js";
 
 export class UiCommand extends BaseCommand {

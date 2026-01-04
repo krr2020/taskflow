@@ -4,9 +4,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { TEMPLATE_FILES } from "../lib/config/config-paths.js";
-import { VERSIONS } from "../lib/config/constants.js";
-import { colors, consoleOutput, icons } from "../lib/core/output.js";
+import { TEMPLATE_FILES } from "@/lib/config/config-paths";
+import { VERSIONS } from "@/lib/config/constants";
+import { colors, consoleOutput, icons } from "@/lib/core/output";
 import {
 	copyDir,
 	ensureDir as ensureFileDir,
@@ -14,14 +14,14 @@ import {
 	readJson,
 	readText,
 	writeJson,
-} from "../lib/utils/file-utils.js";
+} from "@/lib/utils/file-utils";
 import {
 	ensureDir as ensurePathDir,
 	getBackupDir,
 	getRefDir,
 	getTaskflowDir,
-} from "../lib/utils/path-utils.js";
-import { getTemplateDir } from "../lib/utils/template-utils.js";
+} from "@/lib/utils/path-utils";
+import { getTemplateDir } from "@/lib/utils/template-utils";
 import type { CommandResult } from "./base.js";
 import { BaseCommand } from "./base.js";
 

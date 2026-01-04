@@ -5,7 +5,7 @@
  */
 
 import * as readline from "node:readline";
-import { Colors, Separator, Text } from "../ui/components.js";
+import { Colors, Separator, Text } from "@/lib/ui/components";
 
 export interface MultilineInputOptions {
 	message: string;

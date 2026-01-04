@@ -5,15 +5,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execaSync } from "execa";
-import { getExpectedBranchName } from "../config/config-paths.js";
-import { MESSAGES } from "../config/constants.js";
+import { getExpectedBranchName } from "@/lib/config/config-paths";
+import { MESSAGES } from "@/lib/config/constants";
 import {
 	GitOperationError,
 	TaskflowError,
 	WrongBranchError,
-} from "../core/errors.js";
-import { consoleOutput, icons } from "../core/output.js";
-import type { Story } from "../core/types.js";
+} from "@/lib/core/errors";
+import { consoleOutput, icons } from "@/lib/core/output";
+import type { Story } from "@/lib/core/types";
 
 // ============================================================================
 // Branch Operations

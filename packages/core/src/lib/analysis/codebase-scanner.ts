@@ -4,7 +4,7 @@ import type {
 	CodePattern,
 	DiscoveredFeature,
 	ScanConfig,
-} from "../core/types.js";
+} from "@/lib/core/types";
 
 /**
  * Scans a codebase to detect features and patterns

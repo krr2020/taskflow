@@ -2,17 +2,17 @@
  * Skip command - Mark task as blocked
  */
 
-import { ConfigLoader } from "../../lib/config/config-loader.js";
+import { BaseCommand, type CommandResult } from "@/commands/base";
+import { ConfigLoader } from "@/lib/config/config-loader";
 import {
 	findActiveTask,
 	findNextAvailableTask,
 	getTaskFilePath,
 	loadTasksProgress,
 	updateTaskStatus,
-} from "../../lib/core/data-access.js";
-import { NoActiveSessionError } from "../../lib/core/errors.js";
-import { exists, writeJson } from "../../lib/utils/file-utils.js";
-import { BaseCommand, type CommandResult } from "../base.js";
+} from "@/lib/core/data-access";
+import { NoActiveSessionError } from "@/lib/core/errors";
+import { exists, writeJson } from "@/lib/utils/file-utils";
 
 export class SkipCommand extends BaseCommand {
 	async execute(reason: string): Promise<CommandResult> {

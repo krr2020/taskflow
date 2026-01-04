@@ -5,22 +5,22 @@
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
+import { BaseCommand, type CommandResult } from "@/commands/base";
 import {
 	type TechStack,
 	TechStackDetector,
-} from "../../lib/analysis/tech-stack-detector.js";
+} from "@/lib/analysis/tech-stack-detector";
 import {
 	type TechStackOption,
 	TechStackSuggester,
-} from "../../lib/analysis/tech-stack-suggester.js";
-import { ConfigLoader } from "../../lib/config/config-loader.js";
-import { getRefFilePath, REF_FILES } from "../../lib/config/config-paths.js";
-import { LLMRequiredError } from "../../lib/core/errors.js";
-import { InteractiveSelect } from "../../lib/input/index.js";
-import { Colors, Separator, Text } from "../../lib/ui/components.js";
-import { LoadingSpinner } from "../../lib/ui/spinner.js";
-import { StreamDisplay } from "../../lib/utils/stream-display.js";
-import { BaseCommand, type CommandResult } from "../base.js";
+} from "@/lib/analysis/tech-stack-suggester";
+import { ConfigLoader } from "@/lib/config/config-loader";
+import { getRefFilePath, REF_FILES } from "@/lib/config/config-paths";
+import { LLMRequiredError } from "@/lib/core/errors";
+import { InteractiveSelect } from "@/lib/input/index";
+import { Colors, Separator, Text } from "@/lib/ui/components";
+import { LoadingSpinner } from "@/lib/ui/spinner";
+import { StreamDisplay } from "@/lib/utils/stream-display";
 
 interface TechStackChoice {
 	name: string;

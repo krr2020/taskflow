@@ -12,8 +12,13 @@ import { StartCommand } from "../../src/commands/workflow/start.js";
 import type { MCPContext } from "../../src/lib/mcp/mcp-detector.js";
 import { createTestDir } from "../setup.js";
 
+// Mock execa to prevent actual shell commands
+vi.mock("execa", () => ({
+	execaSync: vi.fn().mockReturnValue({ stdout: "" }),
+}));
+
 // Mock git operations
-vi.mock("../../src/lib/git/git", () => ({
+vi.mock("../../src/lib/git/git.js", () => ({
 	verifyBranch: vi.fn(),
 	getCurrentBranch: vi.fn(() => "main"),
 	branchExists: vi.fn(() => true),

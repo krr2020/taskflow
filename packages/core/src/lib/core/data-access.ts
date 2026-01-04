@@ -7,7 +7,7 @@ import path from "node:path";
 import {
 	getFeatureFilePath,
 	getProjectIndexPath,
-} from "../config/config-paths.js";
+} from "@/lib/config/config-paths";
 import {
 	deleteFile,
 	ensureDir,
@@ -16,7 +16,7 @@ import {
 	readJson,
 	readText,
 	writeJson,
-} from "../utils/file-utils.js";
+} from "@/lib/utils/file-utils";
 import {
 	FileNotFoundError,
 	InvalidFileFormatError,
@@ -691,7 +691,7 @@ export function saveLogFile(
 export {
 	getProjectIndexPath,
 	type ProjectPaths,
-} from "../config/config-paths.js";
+} from "@/lib/config/config-paths";
 export type {
 	Feature,
 	FeatureStatus,

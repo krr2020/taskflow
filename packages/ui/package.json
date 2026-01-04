@@ -6,6 +6,11 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc -b && vite build",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"type-check": "tsc --noEmit",
 		"preview": "vite preview"
 	},
 	"dependencies": {
@@ -24,6 +29,10 @@
 		"postcss": "^8.4.49",
 		"tailwindcss": "^3.4.17",
 		"typescript": "~5.6.2",
-		"vite": "^6.0.1"
+		"vite": "^6.0.1",
+		"vitest": "4.0.16",
+		"@testing-library/react": "^16.1.0",
+		"@testing-library/jest-dom": "^6.6.3",
+		"jsdom": "25.0.1"
 	}
 }

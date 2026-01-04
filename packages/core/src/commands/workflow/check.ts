@@ -5,37 +5,30 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { execaSync } from "execa";
-import { LogParser, type ParsedError } from "../../lib/analysis/log-parser.js";
-import { ConfigLoader } from "../../lib/config/config-loader.js";
-import { getRefFilePath, REF_FILES } from "../../lib/config/config-paths.js";
+import { BaseCommand, type CommandResult } from "@/commands/base";
+import { LogParser, type ParsedError } from "@/lib/analysis/log-parser";
+import { ConfigLoader } from "@/lib/config/config-loader";
+import { getRefFilePath, REF_FILES } from "@/lib/config/config-paths";
 import {
 	findActiveTask,
 	loadTasksProgress,
 	updateTaskStatus,
-} from "../../lib/core/data-access.js";
-import {
-	LLMRequiredError,
-	NoActiveSessionError,
-} from "../../lib/core/errors.js";
-import type {
-	Subtask,
-	TaskFileContent,
-	TasksProgress,
-} from "../../lib/core/types.js";
-import { Text } from "../../lib/ui/components.js";
+} from "@/lib/core/data-access";
+import { LLMRequiredError, NoActiveSessionError } from "@/lib/core/errors";
+import type { Subtask, TaskFileContent, TasksProgress } from "@/lib/core/types";
+import { Text } from "@/lib/ui/components";
 import {
 	FileValidator,
 	type ValidationResult,
-} from "../../lib/utils/file-validator.js";
+} from "@/lib/utils/file-validator";
 import {
 	extractNewPatterns,
 	formatNewPatternForDisplay,
 	processValidationOutput,
-} from "../../lib/utils/retrospective.js";
-import { runValidations } from "../../lib/utils/validation.js";
-import { Phase } from "../../llm/base.js";
-import { ProviderFactory } from "../../llm/factory.js";
-import { BaseCommand, type CommandResult } from "../base.js";
+} from "@/lib/utils/retrospective";
+import { runValidations } from "@/lib/utils/validation";
+import { Phase } from "@/llm/base";
+import { ProviderFactory } from "@/llm/factory";
 
 export class CheckCommand extends BaseCommand {
 	async execute(): Promise<CommandResult> {

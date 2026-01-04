@@ -4,25 +4,25 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { ConfigLoader } from "../../lib/config/config-loader.js";
+import { BaseCommand, type CommandResult } from "@/commands/base";
+import { ConfigLoader } from "@/lib/config/config-loader";
 import {
 	getRefFilePath,
 	getSkillFilePath,
 	REF_FILES,
 	SKILL_FILES,
-} from "../../lib/config/config-paths.js";
-import { saveFeature, saveProjectIndex } from "../../lib/core/data-access.js";
-import { LLMRequiredError } from "../../lib/core/errors.js";
+} from "@/lib/config/config-paths";
+import { saveFeature, saveProjectIndex } from "@/lib/core/data-access";
+import { LLMRequiredError } from "@/lib/core/errors";
 import type {
 	Feature,
 	Story,
 	TaskflowConfig,
 	TaskRef,
 	TasksProgress,
-} from "../../lib/core/types.js";
-import { Colors, Text } from "../../lib/ui/components.js";
-import { StreamDisplay } from "../../lib/utils/stream-display.js";
-import { BaseCommand, type CommandResult } from "../base.js";
+} from "@/lib/core/types";
+import { Colors, Text } from "@/lib/ui/components";
+import { StreamDisplay } from "@/lib/utils/stream-display";
 
 export class TasksGenerateCommand extends BaseCommand {
 	protected override requiresLLM = true;

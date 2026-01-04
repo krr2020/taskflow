@@ -2,7 +2,7 @@ import type {
 	GapAnalysis,
 	MigrationPlan,
 	RequirementMatch,
-} from "../core/types.js";
+} from "@/lib/core/types";
 
 /**
  * Analyzes gaps between requirements and implementation

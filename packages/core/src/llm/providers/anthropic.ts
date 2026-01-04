@@ -3,14 +3,14 @@
  * Supports Claude models via Anthropic API
  */
 
-import { LLMError } from "../../lib/core/errors.js";
+import { LLMError } from "@/lib/core/errors";
 import {
 	type LLMGenerationOptions,
 	type LLMGenerationResult,
 	type LLMMessage,
 	LLMProvider,
 	LLMProviderType,
-} from "../base.js";
+} from "@/llm/base";
 
 export interface AnthropicConfig {
 	apiKey: string;

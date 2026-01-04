@@ -7,8 +7,8 @@
  */
 
 import readline from "node:readline";
-import type { BaseCommand } from "../../commands/base.js";
-import { Colors, Text } from "../ui/components.js";
+import type { BaseCommand } from "@/commands/../commands/base";
+import { Colors, Text } from "@/lib/ui/components";
 import {
 	createMenuResult,
 	type MenuResult,

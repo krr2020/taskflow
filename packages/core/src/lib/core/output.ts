@@ -7,7 +7,7 @@
  */
 
 import pc from "picocolors";
-import { ERROR_PATTERNS, MAX_SUMMARY_LINES } from "../config/config-paths.js";
+import { ERROR_PATTERNS, MAX_SUMMARY_LINES } from "@/lib/config/config-paths";
 import { isTaskflowError } from "./errors.js";
 
 // ============================================================================
@@ -349,7 +349,7 @@ export function printTaskDetails(
 // Command Result Formatting (for CLI)
 // ============================================================================
 
-import type { CommandResult } from "../../commands/base.js";
+import type { CommandResult } from "@/commands/base";
 
 /**
  * Format a successful CommandResult for CLI output
