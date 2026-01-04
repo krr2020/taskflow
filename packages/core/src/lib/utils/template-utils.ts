@@ -20,16 +20,13 @@ const __dirname = path.dirname(__filename);
 /**
  * Find the template directory
  * Priority order:
- * 1. Development: ../../templates (relative to package)
- * 2. Dist: ../templates
- * 3. Fallback: ./templates in cwd
+ * 1. Package Root: ../../../templates (works for both src/lib/utils and dist/lib/utils)
+ * 2. Fallback: ./templates in cwd
  */
 export function getTemplateDir(): string {
 	const possiblePaths = [
-		// Development: ../../templates relative to this file
-		path.join(__dirname, "..", "..", "templates"),
-		// Dist: ../templates
-		path.join(__dirname, "..", "templates"),
+		// From src/lib/utils or dist/lib/utils: go up 3 levels to reach package root
+		path.join(__dirname, "..", "..", "..", "templates"),
 		// Fallback: ./templates in current working directory
 		path.join(process.cwd(), "templates"),
 	];
