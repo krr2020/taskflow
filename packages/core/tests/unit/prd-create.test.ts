@@ -7,8 +7,8 @@ import { createMockConfigLoader } from "../helpers/mocks.js";
 
 vi.mock("node:fs");
 vi.mock("node:path");
-vi.mock("@/lib/config/config-loader");
-vi.mock("@/lib/prd/interactive-session", () => ({
+vi.mock("../../src/lib/config/config-loader");
+vi.mock("../../src/lib/prd/interactive-session", () => ({
 	EnhancedPRDSession: class {
 		run(featureName?: string) {
 			return Promise.resolve({
@@ -23,7 +23,7 @@ vi.mock("@/lib/prd/interactive-session", () => ({
 	},
 }));
 
-vi.mock("@/lib/input/index", () => ({
+vi.mock("../../src/lib/input/index", () => ({
 	InteractiveSelect: {
 		confirm: vi.fn().mockResolvedValue(false),
 		single: vi.fn().mockResolvedValue(0),

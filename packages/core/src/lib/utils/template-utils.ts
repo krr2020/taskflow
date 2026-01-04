@@ -27,6 +27,8 @@ export function getTemplateDir(): string {
 	const possiblePaths = [
 		// From src/lib/utils or dist/lib/utils: go up 3 levels to reach package root
 		path.join(__dirname, "..", "..", "..", "templates"),
+		// From dist/lib/utils: go up 2 levels to reach dist root
+		path.join(__dirname, "..", "..", "templates"),
 		// Fallback: ./templates in current working directory
 		path.join(process.cwd(), "templates"),
 	];

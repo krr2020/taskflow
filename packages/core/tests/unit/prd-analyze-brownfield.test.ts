@@ -20,7 +20,7 @@ vi.mock("@/lib/analysis/codebase-scanner", () => ({
 	},
 }));
 
-vi.mock("@/lib/analysis/prd-matcher", () => ({
+vi.mock("../../src/lib/analysis/prd-matcher", () => ({
 	PRDMatcher: class {
 		matchRequirements() {
 			return Promise.resolve([

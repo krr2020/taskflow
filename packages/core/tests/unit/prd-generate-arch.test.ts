@@ -101,25 +101,25 @@ const mocks = vi.hoisted(() => {
 // Mock dependencies
 vi.mock("node:fs");
 
-vi.mock("@/lib/config-loader", () => ({
+vi.mock("../../src/lib/config/config-loader", () => ({
 	ConfigLoader: mocks.MockConfigLoader as any,
 }));
 
-vi.mock("@/lib/analysis/tech-stack-detector.js", () => ({
+vi.mock("../../src/lib/analysis/tech-stack-detector.js", () => ({
 	TechStackDetector: mocks.MockTechStackDetector as any,
 }));
 
-vi.mock("@/lib/analysis/tech-stack-suggester", () => ({
+vi.mock("../../src/lib/analysis/tech-stack-suggester", () => ({
 	TechStackSuggester: mocks.MockTechStackSuggester as any,
 }));
 
-vi.mock("@/lib/input/index", () => ({
+vi.mock("../../src/lib/input/index", () => ({
 	InteractiveSelect: {
 		single: vi.fn().mockResolvedValue(0),
 	},
 }));
 
-vi.mock("@/lib/tech-stack-generator", () => ({
+vi.mock("../../src/lib/analysis/tech-stack-generator", () => ({
 	TechStackGenerator: mocks.MockTechStackGenerator as any,
 }));
 

@@ -13,7 +13,7 @@ import type { MCPContext } from "../../src/lib/mcp/mcp-detector.js";
 import { createTestDir } from "../setup.js";
 
 // Mock git operations
-vi.mock("@/lib/git/git", () => ({
+vi.mock("../../src/lib/git/git", () => ({
 	verifyBranch: vi.fn(),
 	getCurrentBranch: vi.fn(() => "main"),
 	branchExists: vi.fn(() => true),

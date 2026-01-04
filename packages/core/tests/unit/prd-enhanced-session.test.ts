@@ -4,7 +4,7 @@ import { EnhancedPRDSession } from "../../src/lib/prd/interactive-session.js";
 import type { LLMProvider } from "../../src/llm/base.js";
 
 // Mock input handling to prevent readline hanging
-vi.mock("@/lib/input/index", () => {
+vi.mock("../../src/lib/input/index", () => {
 	const MultilineInputMock = vi.fn().mockImplementation(() => ({
 		ask: vi.fn().mockResolvedValue("Test Summary"),
 	}));

@@ -13,7 +13,7 @@ import {
 	MCPDetector,
 } from "../../src/lib/mcp/mcp-detector.js";
 
-vi.mock("@/lib/prd/interactive-session", () => ({
+vi.mock("../../src/lib/prd/interactive-session", () => ({
 	EnhancedPRDSession: class {
 		run(featureName?: string) {
 			return Promise.resolve({

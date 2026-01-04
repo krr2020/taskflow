@@ -6,7 +6,7 @@ import type { MCPContext } from "../../src/lib/mcp/mcp-detector.js";
 import { type LLMGenerationResult, LLMProvider } from "../../src/llm/base.js";
 import { createMockConfigLoader } from "../helpers/mocks.js";
 
-vi.mock("@/lib/config/config-loader");
+vi.mock("../../src/lib/config/config-loader");
 
 // Mock implementation of BaseCommand for testing
 class TestCommand extends BaseCommand {
